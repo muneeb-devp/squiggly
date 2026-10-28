@@ -11,13 +11,14 @@ namespace Squiggly.CodeFixes;
 
 /// <summary>
 /// Phase 0 spike: advances tick in the header, replacing only the header line's text span.
-/// Registered for both the hidden header controller and the visible controls-line fallback.
+/// Registered for the hidden header controller, the visible controls-line fallback, and the
+/// Info-severity HUD (to test whether the HUD alone can anchor the menu in Rider).
 /// </summary>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(SpikeCodeFixProvider)), Shared]
 public sealed class SpikeCodeFixProvider : CodeFixProvider
 {
     public override ImmutableArray<string> FixableDiagnosticIds { get; } =
-        ImmutableArray.Create(SpikeAnalyzer.Controller.Id, SpikeAnalyzer.ControllerVisible.Id);
+        ImmutableArray.Create(SpikeAnalyzer.Controller.Id, SpikeAnalyzer.ControllerVisible.Id, SpikeAnalyzer.Hud.Id);
 
     public override FixAllProvider? GetFixAllProvider() => null;
 
