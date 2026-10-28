@@ -1,0 +1,16 @@
+bin/
+obj/
+artifacts/
+*.user
+*.suo
+.vs/
+.idea/
+.vscode/
+*.nupkg
+*.snupkg
+BenchmarkDotNet.Artifacts/
+TestResults/
+.DS_Store
+
+# Private planning brief, kept out of the repo
+docs/BRIEF.md
