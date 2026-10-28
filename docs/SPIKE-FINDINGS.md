@@ -35,8 +35,8 @@ Fill one column per IDE. Record the IDE version and theme used.
 
 | Question | Visual Studio 2022 | VS Code + C# Dev Kit | Rider |
 |---|---|---|---|
-| IDE version / theme | untested | C# Dev Kit, dark theme | untested |
-| Analyzer loads (built against Roslyn 4.8.0)? | | Yes | |
+| IDE version / theme | untested | C# Dev Kit, dark theme | macOS, dark theme |
+| Analyzer loads (built against Roslyn 4.8.0)? | | Yes | Yes |
 | Squiggles render on 2-char cells inside comments? | | Yes | |
 | Adjacent cells read as one continuous line? | | Yes | |
 | Neighbouring SQ0001/SQ0002 cells distinguishable? | | Yes (red/yellow alternate visibly) | |
@@ -46,18 +46,19 @@ Fill one column per IDE. Record the IDE version and theme used.
 | Info colour / style | | Small grey dots under the cell, not a blue squiggle | |
 | SQ0004 (Hidden + Unnecessary) fades text? | | No visible effect | |
 | SQ0005 (Info + Unnecessary) fades text? | | No visible effect | |
-| Lightbulb offered from hidden SQ0100 on header? | | Yes | |
+| Lightbulb offered from hidden SQ0100 on header? | | Yes | **No**: Rider shows no fixes for Hidden diagnostics |
+| Lightbulb offered from Info SQ0010 HUD on header? | | (not tested) | Yes, at the top of the Alt+Enter menu (after an IDE restart) |
 | Lightbulb offered from Info SQ0101 on `// controls`? | | | |
 | Caret stays on the header after a fix? | | Yes | |
 | Can press Ctrl+. again immediately, without moving? | | Yes | |
 | Fix to redrawn frame, approx. time | | | |
-| Preview pane matches applied change? | | | |
+| Preview pane matches applied change? | | | Yes |
 | `Ordinary.cs` clean? | | Yes | |
 | Error List / Problems panel usable with ~40 pixels? | | | |
 
-Screenshots: `assets/spike/<ide>-*.png`. VS Code: [vscode-dark-tick23.png](../assets/spike/vscode-dark-tick23.png).
+Screenshots: `assets/spike/<ide>-*.png`. VS Code: [vscode-dark-tick23.png](../assets/spike/vscode-dark-tick23.png). Rider: [rider-dark-hud-fix.png](../assets/spike/rider-dark-hud-fix.png).
 
-Blank cells in the VS Code column were not checked. Visual Studio 2022 and Rider are still to be tested before Phase 3 (rendering) is signed off.
+Blank cells in the VS Code column were not checked. Rider's caret and colour rows, and all of Visual Studio 2022, are still to be tested before Phase 3 (rendering) is signed off. Rider needs a restart to pick up a rebuilt analyzer or code-fix DLL.
 
 ## Brief changes required
 
@@ -65,10 +66,11 @@ Applied to docs/BRIEF.md (kept local, not in git):
 
 - Fill character: switched from `·` to ASCII `.`.
 - Palette: VS Code verified as error = red squiggle, warning = yellow squiggle, info = grey dots.
+- Controller: SQ0100 (Hidden) removed. Rider offers no fixes on Hidden diagnostics, so the header's one visible diagnostic (SQ0010 HUD, SQ0011, SQ9000 or SQ9001) doubles as the controller.
+- Minesweeper: per-cell input diagnostics must be visible, not Hidden. Open question for that game.
 
 Decided from VS Code, to re-check in VS 2022 and Rider:
 
-- Controller placement: keep the hidden SQ0100 on the header line. The `// controls` fallback is not needed in VS Code.
 - Roslyn pin: keep 4.8.0.
 
 Open:
