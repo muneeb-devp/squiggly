@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/Arcade/Arcade.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Squiggly.Analyzers/Squiggly.Analyzers.csproj" />
+    <Project Path="src/Squiggly.CodeFixes/Squiggly.CodeFixes.csproj" />
+  </Folder>
+</Solution>
