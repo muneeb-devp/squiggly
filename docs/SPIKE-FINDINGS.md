@@ -35,37 +35,45 @@ Fill one column per IDE. Record the IDE version and theme used.
 
 | Question | Visual Studio 2022 | VS Code + C# Dev Kit | Rider |
 |---|---|---|---|
-| IDE version / theme | | | |
-| Analyzer loads (built against Roslyn 4.8.0)? | | | |
-| Squiggles render on 2-char cells inside comments? | | | |
-| Adjacent cells read as one continuous line? | | | |
-| Neighbouring SQ0001/SQ0002 cells distinguishable? | | | |
-| `·` vs `.`: which renders squiggles better? | | | |
-| Error colour | | | |
-| Warning colour | | | |
-| Info colour / style | | | |
-| SQ0004 (Hidden + Unnecessary) fades text? | | | |
-| SQ0005 (Info + Unnecessary) fades text? | | | |
-| Lightbulb offered from hidden SQ0100 on header? | | | |
+| IDE version / theme | untested | C# Dev Kit, dark theme | untested |
+| Analyzer loads (built against Roslyn 4.8.0)? | | Yes | |
+| Squiggles render on 2-char cells inside comments? | | Yes | |
+| Adjacent cells read as one continuous line? | | Yes | |
+| Neighbouring SQ0001/SQ0002 cells distinguishable? | | Yes (red/yellow alternate visibly) | |
+| `·` vs `.`: which renders squiggles better? | | `.` (owner's call) | |
+| Error colour | | Red squiggle | |
+| Warning colour | | Yellow squiggle | |
+| Info colour / style | | Small grey dots under the cell, not a blue squiggle | |
+| SQ0004 (Hidden + Unnecessary) fades text? | | No visible effect | |
+| SQ0005 (Info + Unnecessary) fades text? | | No visible effect | |
+| Lightbulb offered from hidden SQ0100 on header? | | Yes | |
 | Lightbulb offered from Info SQ0101 on `// controls`? | | | |
-| Caret stays on the header after a fix? | | | |
-| Can press Ctrl+. again immediately, without moving? | | | |
+| Caret stays on the header after a fix? | | Yes | |
+| Can press Ctrl+. again immediately, without moving? | | Yes | |
 | Fix to redrawn frame, approx. time | | | |
 | Preview pane matches applied change? | | | |
-| `Ordinary.cs` clean? | | | |
+| `Ordinary.cs` clean? | | Yes | |
 | Error List / Problems panel usable with ~40 pixels? | | | |
 
-Screenshots: `assets/spike/<ide>-*.png`.
+Screenshots: `assets/spike/<ide>-*.png`. VS Code: [vscode-dark-tick23.png](../assets/spike/vscode-dark-tick23.png).
+
+Blank cells in the VS Code column were not checked. Visual Studio 2022 and Rider are still to be tested before Phase 3 (rendering) is signed off.
 
 ## Brief changes required
 
-To be agreed after the results are in. Candidates the results decide:
+Applied to docs/BRIEF.md (kept local, not in git):
 
-- Fill character: keep `·` or switch to `.`.
-- Controller placement: hidden diagnostic on the header, or a visible one on a dedicated `// controls` line.
-- Ghost colour for Tetris: which severity + Unnecessary combination fades, if any.
-- Palette table per IDE for the README.
-- Roslyn pin: keep 4.8.0 or change it.
+- Fill character: switched from `·` to ASCII `.`.
+- Palette: VS Code verified as error = red squiggle, warning = yellow squiggle, info = grey dots.
+
+Decided from VS Code, to re-check in VS 2022 and Rider:
+
+- Controller placement: keep the hidden SQ0100 on the header line. The `// controls` fallback is not needed in VS Code.
+- Roslyn pin: keep 4.8.0.
+
+Open:
+
+- Ghost colour for Tetris: the `Unnecessary` tag shows nothing in VS Code. Unless VS or Rider fade it, Tetris ships without a ghost piece (or draws it as SQ0003 info dots).
 
 ## Notes from the command line (macOS, .NET SDK 10.0.302)
 
