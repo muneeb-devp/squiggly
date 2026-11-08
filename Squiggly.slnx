@@ -1,8 +1,15 @@
 <Solution>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/Squiggly.Benchmarks/Squiggly.Benchmarks.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/Arcade/Arcade.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Squiggly.Analyzers/Squiggly.Analyzers.csproj" />
     <Project Path="src/Squiggly.CodeFixes/Squiggly.CodeFixes.csproj" />
     <Project Path="src/Squiggly.Engine/Squiggly.Engine.csproj" />
+    <Project Path="src/Squiggly.Package/Squiggly.Package.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Squiggly.Analyzers.Tests/Squiggly.Analyzers.Tests.csproj" />

@@ -1,0 +1,2 @@
+// squiggly
+namespace Arcade;

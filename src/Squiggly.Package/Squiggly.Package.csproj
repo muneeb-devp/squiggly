@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Packs the analyzer and code fix DLLs into analyzers/dotnet/cs. The package has no lib folder and no
+    dependencies: Roslyn supplies Microsoft.CodeAnalysis, and the engine is compiled into the analyzer.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IncludeSymbols>false</IncludeSymbols>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+
+    <PackageId>Squiggly</PackageId>
+    <Title>Squiggly</Title>
+    <Description>Play Snake, Tetris and Minesweeper in your compiler errors. Diagnostics are the pixels, lightbulb code fixes are the controls, and the game state lives in a comment. Works in Visual Studio, VS Code (C# Dev Kit) and Rider.</Description>
+    <PackageTags>roslyn;analyzer;codefix;game;snake;tetris;minesweeper;fun</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/muneeb-devp/squiggly</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);_AddAnalyzersToPackage</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Squiggly.Analyzers\Squiggly.Analyzers.csproj" />
+    <ProjectReference Include="..\Squiggly.CodeFixes\Squiggly.CodeFixes.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <Target Name="_AddAnalyzersToPackage">
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="$(OutputPath)Squiggly.Analyzers.dll" PackagePath="analyzers/dotnet/cs" />
+      <TfmSpecificPackageFile Include="$(OutputPath)Squiggly.CodeFixes.dll" PackagePath="analyzers/dotnet/cs" />
+    </ItemGroup>
+  </Target>
+
+</Project>
