@@ -2,8 +2,9 @@
 
 Squiggly is a NuGet package that turns your IDE into a game console. Compiler diagnostics are the pixels, lightbulb code fixes are the controls, and the game state lives in a comment at the top of the file. Install it, create `Game.cs`, press <kbd>Ctrl</kbd>+<kbd>.</kbd>, and play Snake in red and yellow squiggles.
 
-<!-- Demo GIF: 10 to 15 seconds, dark theme, squiggles moving and the score changing. -->
-![Snake played in VS Code squiggles](https://raw.githubusercontent.com/muneeb-devp/squiggly/main/assets/spike/vscode-dark-tick23.png)
+![Snake in Squiggly: start a game from the lightbulb menu, then steer by typing w a s d on the keys line. The red squiggle is the head, yellow is the body, dots are the food.](assets/demo.gif)
+
+<sub>Start a game from the lightbulb, then steer by typing on the <code>// keys:</code> line. Red is the snake's head, yellow its body, and the dots are food. The animation is drawn from the real analyzer output by <a href="eng/demo">eng/demo</a>, in VS Code's dark-theme colours.</sub>
 
 ## Install
 
