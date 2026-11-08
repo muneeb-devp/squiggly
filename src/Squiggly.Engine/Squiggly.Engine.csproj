@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Pure game engine: no dependencies, no I/O, no clocks, no System.Random, no mutable static state.
+    Its source is also compiled into Squiggly.Analyzers as linked files, so the package ships two DLLs only.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+</Project>
