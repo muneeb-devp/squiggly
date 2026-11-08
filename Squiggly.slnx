@@ -1,8 +1,11 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Squiggly.Analyzers/Squiggly.Analyzers.csproj" />
+    <Project Path="src/Squiggly.CodeFixes/Squiggly.CodeFixes.csproj" />
     <Project Path="src/Squiggly.Engine/Squiggly.Engine.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Squiggly.Analyzers.Tests/Squiggly.Analyzers.Tests.csproj" />
     <Project Path="tests/Squiggly.Engine.Tests/Squiggly.Engine.Tests.csproj" />
   </Folder>
 </Solution>
