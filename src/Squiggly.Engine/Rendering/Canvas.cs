@@ -17,7 +17,7 @@ public static class Canvas
     /// </summary>
     public const char Fill = '.';
 
-    /// <summary>The line under the canvas that holds typed keys, for games with <see cref="IGame.KeyControls"/>.</summary>
+    /// <summary>The line under the canvas that holds the moves made so far: typed keys, or cell moves for Minesweeper.</summary>
     public const string KeysPrefix = "// keys:";
 
     public static bool IsKeysLine(string line) => line.TrimStart().StartsWith(KeysPrefix, System.StringComparison.Ordinal);
@@ -49,7 +49,7 @@ public static class Canvas
             && trimmed[trimmed.Length - 1] == RowSuffix;
     }
 
-    /// <summary>The full block under the header for a game state: canvas rows, then an empty keys line if the game uses one.</summary>
+    /// <summary>The full block under the header for a game state: canvas rows, then an empty keys line.</summary>
     public static IReadOnlyList<string> Lines(IGame game, GameState state, string indent)
     {
         var lines = new List<string>();
@@ -58,10 +58,7 @@ public static class Canvas
             lines.Add(Row(indent, contents));
         }
 
-        if (game.KeyControls)
-        {
-            lines.Add(KeysLine(indent, ""));
-        }
+        lines.Add(KeysLine(indent, ""));
 
         return lines;
     }

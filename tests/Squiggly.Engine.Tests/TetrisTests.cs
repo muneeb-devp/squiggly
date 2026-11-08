@@ -148,15 +148,23 @@ public class TetrisTests
     }
 
     [Fact]
+    public void Keys_map_to_actions_in_menu_order()
+    {
+        Assert.Equal(Game.Actions, Game.ParseKeys("adwsx"));
+        Assert.Equal(Game.Actions, Game.ParseKeys("A D w ? S X"));
+        Assert.Equal("ax", Game.AppendKey("a", Game.NewGame(1), TetrisGame.HardDrop));
+    }
+
+    [Fact]
     public void Replay_is_deterministic()
     {
         var map = new[] { TetrisGame.Left, TetrisGame.Right, TetrisGame.Rotate, TetrisGame.SoftDrop, TetrisGame.HardDrop };
         var moves = "LLRHRRRHURLHLLLLHRRRRRHSSSHUULH"
             .Select(c => map["LRUSH".IndexOf(c)]);
         var final = TestPlay.Replay(Game, 8812, moves);
-        Assert.Equal(GoldenTetris, Header.Serialize(Game, final));
+        Assert.Equal(GoldenTetris, Header.Describe(Game, final));
     }
 
     private const string GoldenTetris =
-        "// squiggly v1 game=tetris seed=8812 tick=31 status=playing score=0 piece=Z rot=0 pos=3,0 next=L drawn=9 lines=0 board=0.0.0.0.0.0.0.0.0.0.0.0.1c.34.18.10.30.3d0.d9.19f";
+        "game=tetris seed=8812 tick=31 status=playing score=0 piece=Z rot=0 pos=3,0 next=L drawn=9 lines=0 board=0.0.0.0.0.0.0.0.0.0.0.0.1c.34.18.10.30.3d0.d9.19f";
 }

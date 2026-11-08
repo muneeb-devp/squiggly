@@ -66,8 +66,6 @@ public sealed class SnakeGame : IGame
 
     public bool DynamicCanvas => false;
 
-    public bool KeyControls => true;
-
     public IReadOnlyList<GameAction> Actions => ActionList;
 
     public GameState NewGame(uint seed)
@@ -141,14 +139,45 @@ public sealed class SnakeGame : IGame
 
     public IReadOnlyList<GameAction> CellActions(GameState state, Point cell) => System.Array.Empty<GameAction>();
 
-    /// <summary>w a s d steer. Pressing the current direction again just moves forward, so holding a key glides.</summary>
-    public GameAction? KeyAction(char key) => char.ToLowerInvariant(key) switch
+    /// <summary>w a s d steer (either case). Pressing the current direction again just moves forward, so holding a key glides.</summary>
+    public IReadOnlyList<GameAction> ParseKeys(string keys)
     {
-        'w' => Up,
-        'a' => Left,
-        's' => Down,
-        'd' => Right,
-        _ => null,
+        var actions = new List<GameAction>(keys.Length);
+        foreach (var key in keys)
+        {
+            switch (char.ToLowerInvariant(key))
+            {
+                case 'w': actions.Add(Up); break;
+                case 'a': actions.Add(Left); break;
+                case 's': actions.Add(Down); break;
+                case 'd': actions.Add(Right); break;
+            }
+        }
+
+        return actions;
+    }
+
+    /// <summary>Records a menu move as its key; Wait is the key for the current direction.</summary>
+    public string AppendKey(string keys, GameState state, GameAction action)
+    {
+        var dir = action.Id switch
+        {
+            "up" => Direction.Up,
+            "down" => Direction.Down,
+            "left" => Direction.Left,
+            "right" => Direction.Right,
+            _ => ((SnakeState)state).Dir,
+        };
+        return keys + Key(dir);
+    }
+
+    /// <summary>The key that steers in <paramref name="direction"/>.</summary>
+    public static char Key(Direction direction) => direction switch
+    {
+        Direction.Up => 'w',
+        Direction.Left => 'a',
+        Direction.Down => 's',
+        _ => 'd',
     };
 
     public Frame Render(GameState state)
@@ -173,11 +202,9 @@ public sealed class SnakeGame : IGame
     public string Hud(GameState state)
     {
         var snake = (SnakeState)state;
-        var paused = snake.Status == GameStatus.Paused ? " (paused)" : "";
         return string.Format(
             CultureInfo.InvariantCulture,
-            "Snake{0}, score {1}, length {2}, tick {3}. Type w a s d at the end of the // keys: line to steer",
-            paused,
+            "Snake, score {0}, length {1}, moves {2}. Type w a s d at the end of the // keys: line to steer",
             snake.Score,
             snake.Tail.Length + 1,
             snake.Tick);
@@ -192,42 +219,6 @@ public sealed class SnakeGame : IGame
     }
 
     public IReadOnlyList<string> Canvas(GameState state) => Games.BlankCanvas(Width, Height);
-
-    public GameState Read(HeaderReader reader)
-    {
-        var dirText = reader.Get("dir");
-        if (dirText.Length != 1 || !Directions.TryParse(dirText[0], out var dir))
-        {
-            throw HeaderReader.Bad("dir", dirText);
-        }
-
-        var head = reader.Point("head", 0, Width - 1, 0, Height - 1);
-
-        var tail = reader.Get("tail");
-        var walk = head;
-        foreach (var letter in tail)
-        {
-            if (!Directions.TryParse(letter, out var step) || !(walk = walk.Step(step)).IsInside(Width, Height))
-            {
-                throw HeaderReader.Bad("tail", tail);
-            }
-        }
-
-        var foodText = reader.Get("food");
-        Point? food = foodText == "-" ? null : reader.Point("food", 0, Width - 1, 0, Height - 1);
-
-        return new SnakeState
-        {
-            Seed = reader.Seed,
-            Tick = reader.Tick,
-            Status = reader.Status,
-            Score = reader.Score,
-            Dir = dir,
-            Head = head,
-            Tail = tail,
-            Food = food,
-        };
-    }
 
     public void Write(GameState state, HeaderWriter writer)
     {

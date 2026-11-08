@@ -7,14 +7,11 @@ public enum CommandKind
 {
     NewGame,
     Action,
-    Pause,
-    Resume,
     Restart,
     PlayAgain,
     SwitchGame,
     ResetGame,
     RepairCanvas,
-    SaveProgress,
 }
 
 /// <summary>
@@ -26,16 +23,15 @@ public sealed record Command(CommandKind Kind, string Key, string Title, IGame? 
 /// <summary>
 /// The result of a command. <see cref="Header"/> replaces the header text (without indent).
 /// <see cref="CanvasRows"/>, when not null, is the complete canvas the file should end up with.
-/// <see cref="Keys"/>, when not null, is the new content of the <c>// keys:</c> line (empty after the
-/// keys are folded into the header). Callers rewrite only the lines that differ.
+/// <see cref="Keys"/>, when not null, is the new content of the <c>// keys:</c> line.
+/// Callers rewrite only the lines that differ.
 /// </summary>
 public sealed record FileEdit(string Header, IReadOnlyList<string>? CanvasRows, string? Keys = null);
 
 /// <summary>
-/// The controls. The menu depends only on the file's state, and applying a command is a pure function
-/// of the file, the command and a seed chosen by the caller (used only when a new game starts).
-/// Commands act on <see cref="GameFile.State"/>, which includes any typed keys, and fold those keys into
-/// the new header, so the keys line is cleared.
+/// The controls. The menu depends only on the file, and applying a command is a pure function of the
+/// file, the command and a seed chosen by the caller (used only when a new game starts). A move from
+/// the menu is recorded on the keys line, exactly as if it had been typed.
 /// </summary>
 public static class Controller
 {
@@ -67,30 +63,19 @@ public static class Controller
             return commands;
         }
 
-        switch (file.State!.Status)
+        if (file.State!.Status == GameStatus.Playing)
         {
-            case GameStatus.Playing:
-                foreach (var action in current.Actions)
-                {
-                    commands.Add(ActionCommand(current, action));
-                }
+            foreach (var action in current.Actions)
+            {
+                commands.Add(ActionCommand(current, action));
+            }
 
-                commands.Add(new Command(CommandKind.Pause, "squiggly.pause", Prefix + "Pause", current));
-                commands.Add(new Command(CommandKind.Restart, "squiggly.restart", Prefix + "Restart", current));
-                break;
-            case GameStatus.Paused:
-                commands.Add(new Command(CommandKind.Resume, "squiggly.resume", Prefix + "Resume", current));
-                commands.Add(new Command(CommandKind.Restart, "squiggly.restart", Prefix + "Restart", current));
-                break;
-            default:
-                commands.Add(new Command(CommandKind.PlayAgain, "squiggly.again", Prefix + "Play again", current));
-                commands.Add(new Command(CommandKind.SwitchGame, "squiggly.switch", Prefix + "Switch game", current));
-                break;
+            commands.Add(new Command(CommandKind.Restart, "squiggly.restart", Prefix + "Restart", current));
         }
-
-        if (file.Keys.Length > 0)
+        else
         {
-            commands.Add(new Command(CommandKind.SaveProgress, "squiggly.save", Prefix + "Save progress (move typed keys into the header)", current));
+            commands.Add(new Command(CommandKind.PlayAgain, "squiggly.again", Prefix + "Play again", current));
+            commands.Add(new Command(CommandKind.SwitchGame, "squiggly.switch", Prefix + "Switch game", current));
         }
 
         return commands;
@@ -117,40 +102,28 @@ public static class Controller
     /// <summary>Applies <paramref name="command"/>. <paramref name="seed"/> is used only when a new game starts.</summary>
     public static FileEdit Apply(GameFile file, Command command, uint seed)
     {
+        var header = file.HeaderLine.Trim();
         switch (command.Kind)
         {
             case CommandKind.NewGame:
             case CommandKind.Restart:
             case CommandKind.PlayAgain:
                 var game = command.Game!;
-                var fresh = game.NewGame(seed);
-                return new FileEdit(Header.Serialize(game, fresh), game.Canvas(fresh), KeysFor(game, ""));
+                return new FileEdit(Header.Serialize(game, seed), game.Canvas(game.NewGame(seed)), "");
             case CommandKind.SwitchGame:
             case CommandKind.ResetGame:
                 return new FileEdit(Header.ReadyLine, null);
             case CommandKind.RepairCanvas:
-                // Keep the header and any typed keys; only the canvas (and a missing keys line) is rebuilt.
-                var damaged = file.Header.Game!;
-                return new FileEdit(file.HeaderLine.Trim(), damaged.Canvas(file.Header.State!), KeysFor(damaged, file.Keys));
-            case CommandKind.Pause:
-                return Rewrite(file, file.State! with { Status = GameStatus.Paused });
-            case CommandKind.Resume:
-                return Rewrite(file, file.State! with { Status = GameStatus.Playing });
-            case CommandKind.SaveProgress:
-                return Rewrite(file, file.State!);
+                // Keep the header and the moves; only the canvas (and a missing keys line) is rebuilt.
+                return new FileEdit(header, file.Header.Game!.Canvas(file.State!), file.Keys);
             default:
                 var current = file.Header.Game!;
+                var keys = current.AppendKey(file.Keys, file.State!, command.Action!);
                 var next = current.Step(file.State!, command.Action!);
-                return new FileEdit(Header.Serialize(current, next), current.DynamicCanvas ? current.Canvas(next) : null, KeysFor(current, ""));
+                return new FileEdit(header, current.DynamicCanvas ? current.Canvas(next) : null, keys);
         }
     }
 
     private static Command ActionCommand(IGame game, GameAction action) =>
         new(CommandKind.Action, "squiggly." + game.Id + "." + action.Id, Prefix + action.Title, game, action);
-
-    private static FileEdit Rewrite(GameFile file, GameState state) =>
-        new(Header.Serialize(file.Header.Game!, state), null, KeysFor(file.Header.Game!, ""));
-
-    /// <summary>Games with key controls always get a keys line; others never do.</summary>
-    private static string? KeysFor(IGame game, string keys) => game.KeyControls ? keys : null;
 }

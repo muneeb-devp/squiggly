@@ -63,8 +63,6 @@ public sealed class TetrisGame : IGame
 
     public bool DynamicCanvas => false;
 
-    public bool KeyControls => true;
-
     public IReadOnlyList<GameAction> Actions => ActionList;
 
     /// <summary>The <paramref name="index"/>th piece (0-based) of the seven-bag sequence for <paramref name="seed"/>.</summary>
@@ -123,16 +121,27 @@ public sealed class TetrisGame : IGame
 
     public IReadOnlyList<GameAction> CellActions(GameState state, Point cell) => System.Array.Empty<GameAction>();
 
-    /// <summary>a and d move, w rotates, s soft drops, x hard drops.</summary>
-    public GameAction? KeyAction(char key) => char.ToLowerInvariant(key) switch
+    /// <summary>a and d move, w rotates, s soft drops, x hard drops (either case).</summary>
+    public IReadOnlyList<GameAction> ParseKeys(string keys)
     {
-        'a' => Left,
-        'd' => Right,
-        'w' => Rotate,
-        's' => SoftDrop,
-        'x' => HardDrop,
-        _ => null,
-    };
+        var actions = new List<GameAction>(keys.Length);
+        foreach (var key in keys)
+        {
+            var index = KeyLetters.IndexOf(char.ToLowerInvariant(key));
+            if (index >= 0)
+            {
+                actions.Add(ActionList[index]);
+            }
+        }
+
+        return actions;
+    }
+
+    public string AppendKey(string keys, GameState state, GameAction action) =>
+        keys + KeyLetters[System.Array.IndexOf(ActionList, action)];
+
+    /// <summary>The key for each entry of <see cref="Actions"/>, in the same order.</summary>
+    public const string KeyLetters = "adwsx";
 
     public Frame Render(GameState state)
     {
@@ -172,15 +181,12 @@ public sealed class TetrisGame : IGame
     public string Hud(GameState state)
     {
         var tetris = (TetrisState)state;
-        var paused = tetris.Status == GameStatus.Paused ? " (paused)" : "";
         return string.Format(
             CultureInfo.InvariantCulture,
-            "Tetris{0}, score {1}, lines {2}, next {3}, tick {4}. On the // keys: line type a d to move, w to rotate, s to drop, x to hard drop",
-            paused,
+            "Tetris, score {0}, lines {1}, next {2}. On the // keys: line type a d to move, w to rotate, s to drop, x to hard drop",
             tetris.Score,
             tetris.Lines,
-            tetris.Next,
-            tetris.Tick);
+            tetris.Next);
     }
 
     public string GameOver(GameState state)
@@ -194,31 +200,6 @@ public sealed class TetrisGame : IGame
     }
 
     public IReadOnlyList<string> Canvas(GameState state) => Games.BlankCanvas(Width, Height);
-
-    public GameState Read(HeaderReader reader)
-    {
-        var piece = ReadPiece(reader, "piece");
-        var rot = reader.Int("rot", 0, 3);
-        var pos = reader.Point("pos", -3, Width, -3, Height);
-        var next = ReadPiece(reader, "next");
-        var drawn = reader.Int("drawn", 2, int.MaxValue);
-        var lines = reader.Int("lines", 0, int.MaxValue);
-        var board = reader.Grid("board", Width, Height);
-        return new TetrisState
-        {
-            Seed = reader.Seed,
-            Tick = reader.Tick,
-            Status = reader.Status,
-            Score = reader.Score,
-            Piece = piece,
-            Rot = rot,
-            Pos = pos,
-            Next = next,
-            Drawn = drawn,
-            Lines = lines,
-            Board = board,
-        };
-    }
 
     public void Write(GameState state, HeaderWriter writer)
     {
@@ -247,12 +228,6 @@ public sealed class TetrisGame : IGame
         }
 
         return pos;
-    }
-
-    private static char ReadPiece(HeaderReader reader, string key)
-    {
-        var text = reader.Get(key);
-        return text.Length == 1 && Tetrominoes.IsPiece(text[0]) ? text[0] : throw HeaderReader.Bad(key, text);
     }
 
     private static Point Below(Point pos) => new(pos.X, pos.Y + 1);

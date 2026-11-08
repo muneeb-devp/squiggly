@@ -63,15 +63,42 @@ public sealed class MinesGame : IGame
 
     public bool DynamicCanvas => true;
 
-    /// <summary>
-    /// False: revealed numbers live in the canvas text, which only a code fix can rewrite, so typed keys
-    /// could never show them. Minesweeper is played with the lightbulb on each cell instead.
-    /// </summary>
-    public bool KeyControls => false;
 
     public IReadOnlyList<GameAction> Actions => System.Array.Empty<GameAction>();
 
-    public GameAction? KeyAction(char key) => null;
+    /// <summary>
+    /// Moves are tokens such as <c>r5,3</c> (reveal), <c>f2,2</c> (flag) and <c>u2,2</c> (unflag), separated by
+    /// spaces. They are written by the cell code fixes: revealed numbers live in the canvas text, which only
+    /// a code fix can rewrite, so Minesweeper is played from the lightbulb on each cell rather than by typing.
+    /// </summary>
+    public IReadOnlyList<GameAction> ParseKeys(string keys)
+    {
+        var actions = new List<GameAction>();
+        foreach (var token in keys.Split(new[] { ' ', '\t' }, System.StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = token.Substring(1).Split(',');
+            if (parts.Length == 2
+                && int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var x)
+                && int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var y))
+            {
+                var cell = new Point(x, y);
+                switch (token[0])
+                {
+                    case 'r': actions.Add(Reveal(cell)); break;
+                    case 'f': actions.Add(Flag(cell)); break;
+                    case 'u': actions.Add(Unflag(cell)); break;
+                }
+            }
+        }
+
+        return actions;
+    }
+
+    public string AppendKey(string keys, GameState state, GameAction action)
+    {
+        var token = action.Id.Substring(0, 1) + action.Target!.Value;
+        return keys.Length == 0 ? token : keys + " " + token;
+    }
 
     public static GameAction Reveal(Point cell) => new("reveal", "Reveal", cell);
 
@@ -146,16 +173,13 @@ public sealed class MinesGame : IGame
     public string Hud(GameState state)
     {
         var mines = (MinesState)state;
-        var paused = mines.Status == GameStatus.Paused ? " (paused)" : "";
         return string.Format(
             CultureInfo.InvariantCulture,
-            "Minesweeper{0}, {1} mines, {2} flagged, {3} of {4} cleared, tick {5}. Caret on a dotted cell, Ctrl+. to reveal or flag",
-            paused,
+            "Minesweeper, {0} mines, {1} flagged, {2} of {3} cleared. Caret on a dotted cell, Ctrl+. to reveal or flag",
             MineCount,
             mines.Flags.Count(),
             mines.Score,
-            Width * Height - MineCount,
-            mines.Tick);
+            Width * Height - MineCount);
     }
 
     public string GameOver(GameState state)
@@ -199,31 +223,6 @@ public sealed class MinesGame : IGame
         }
 
         return rows;
-    }
-
-    public GameState Read(HeaderReader reader)
-    {
-        BitGrid? layout = null;
-        var minesText = reader.Get("mines");
-        if (minesText != "-")
-        {
-            layout = reader.Grid("mines", Width, Height);
-            if (layout.Count() != MineCount)
-            {
-                throw HeaderReader.Bad("mines", minesText);
-            }
-        }
-
-        return new MinesState
-        {
-            Seed = reader.Seed,
-            Tick = reader.Tick,
-            Status = reader.Status,
-            Score = reader.Score,
-            Mines = layout,
-            Open = reader.Grid("open", Width, Height),
-            Flags = reader.Grid("flags", Width, Height),
-        };
     }
 
     public void Write(GameState state, HeaderWriter writer)

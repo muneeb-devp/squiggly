@@ -7,8 +7,21 @@ public class SnakeTests
 {
     private static readonly SnakeGame Game = SnakeGame.Instance;
 
-    private static SnakeState Snake(string head, string tail, string dir = "R", string food = "0,0") =>
-        (SnakeState)Header.Parse($"// squiggly v1 game=snake seed=1 tick=0 status=playing score=0 dir={dir} head={head} tail={tail} food={food}").State!;
+    private static SnakeState Snake(string head, string tail, string dir = "R", string food = "0,0") => new()
+    {
+        Seed = 1,
+        Status = GameStatus.Playing,
+        Dir = Directions.TryParse(dir[0], out var d) ? d : throw new System.ArgumentException(dir),
+        Head = Parse(head),
+        Tail = tail,
+        Food = food == "-" ? null : Parse(food),
+    };
+
+    private static Point Parse(string point)
+    {
+        var parts = point.Split(',');
+        return new Point(int.Parse(parts[0]), int.Parse(parts[1]));
+    }
 
     [Fact]
     public void New_game_is_length_three_in_the_middle_heading_right()
@@ -128,12 +141,19 @@ public class SnakeTests
     }
 
     [Fact]
-    public void Step_ignores_paused_and_finished_games()
+    public void Step_ignores_finished_games()
     {
-        var paused = Snake("5,5", "LL") with { Status = GameStatus.Paused };
-        Assert.Same(paused, Game.Step(paused, SnakeGame.Up));
-        var over = paused with { Status = GameStatus.Over };
+        var over = Snake("5,5", "LL") with { Status = GameStatus.Over };
         Assert.Same(over, Game.Step(over, SnakeGame.Up));
+    }
+
+    [Fact]
+    public void Keys_map_to_moves_and_menu_moves_map_back_to_keys()
+    {
+        Assert.Equal(new[] { SnakeGame.Up, SnakeGame.Left, SnakeGame.Down, SnakeGame.Right, SnakeGame.Up }, Game.ParseKeys("wasd W?"));
+        var heading = Snake("5,5", "LL", dir: "U");
+        Assert.Equal("ddw", Game.AppendKey("dd", heading, SnakeGame.Wait));
+        Assert.Equal("dda", Game.AppendKey("dd", heading, SnakeGame.Left));
     }
 
     [Fact]
@@ -154,7 +174,7 @@ public class SnakeTests
         var moves = "RRRDDDDLLLLUUWWWRRRRRRRDDDLLLLLLLLLUUUUWWWRRRRRRRRRRDDLLLL"
             .Select(c => c switch { 'U' => SnakeGame.Up, 'D' => SnakeGame.Down, 'L' => SnakeGame.Left, 'R' => SnakeGame.Right, _ => SnakeGame.Wait });
         var final = TestPlay.Replay(Game, 8812, moves);
-        Assert.Equal(GoldenSnake, Header.Serialize(Game, final));
+        Assert.Equal(GoldenSnake, Header.Describe(Game, final));
     }
 
     [Fact]
@@ -167,7 +187,7 @@ public class SnakeTests
             state = (SnakeState)Game.Step(state, Chase(state));
         }
 
-        Assert.Equal(GoldenChase, Header.Serialize(Game, state));
+        Assert.Equal(GoldenChase, Header.Describe(Game, state));
     }
 
     /// <summary>Greedy deterministic player: head towards the food, avoiding immediate death when it can.</summary>
@@ -192,8 +212,8 @@ public class SnakeTests
     }
 
     private const string GoldenSnake =
-        "// squiggly v1 game=snake seed=8812 tick=58 status=playing score=0 dir=L head=13,2 tail=RR food=0,2";
+        "game=snake seed=8812 tick=58 status=playing score=0 dir=L head=13,2 tail=RR food=0,2";
 
     private const string GoldenChase =
-        "// squiggly v1 game=snake seed=2026 tick=247 status=over score=18 dir=L head=13,4 tail=RRRRDLLLLLUURRRRRRDD food=4,5";
+        "game=snake seed=2026 tick=247 status=over score=18 dir=L head=13,4 tail=RRRRDLLLLLUURRRRRRDD food=4,5";
 }

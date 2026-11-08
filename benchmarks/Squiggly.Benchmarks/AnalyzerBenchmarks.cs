@@ -36,6 +36,7 @@ public class AnalyzerBenchmarks
 
         _ordinary = SourceText.From(builder.Append("}\n").ToString());
         _snake = SourceText.From(LongSnakeFile());
+        System.Console.WriteLine($"Long Snake game: {MoveCount} moves");
         _ordinaryCompilation = Compile(_ordinary);
         _snakeCompilation = Compile(_snake);
     }
@@ -43,13 +44,13 @@ public class AnalyzerBenchmarks
     [Benchmark(Description = "Early exit: locate header in a 5,000-line ordinary file")]
     public SquigglyDocument? EarlyExit() => SquigglyDocument.Locate(_ordinary);
 
-    [Benchmark(Description = "Full frame: read and render a long Snake")]
+    [Benchmark(Description = "Full frame: replay a long Snake game and render it")]
     public int SnakeFrame() => SquigglyDocument.Locate(_snake)!.Read().Marks.Count;
 
     [Benchmark(Description = "Analyzer via Roslyn: 5,000-line ordinary file")]
     public Task<ImmutableArray<Diagnostic>> AnalyzerOrdinary() => Run(_ordinaryCompilation);
 
-    [Benchmark(Description = "Analyzer via Roslyn: long Snake")]
+    [Benchmark(Description = "Analyzer via Roslyn: long Snake game")]
     public Task<ImmutableArray<Diagnostic>> AnalyzerSnake() => Run(_snakeCompilation);
 
     private static Task<ImmutableArray<Diagnostic>> Run(Compilation compilation) =>
@@ -58,13 +59,32 @@ public class AnalyzerBenchmarks
     private static Compilation Compile(SourceText text) =>
         CSharpCompilation.Create("Bench", new[] { CSharpSyntaxTree.ParseText(text) });
 
-    /// <summary>A snake winding across the board, about 100 cells long.</summary>
+    /// <summary>A Snake file with a long move history: a greedy player chases food until it dies or makes 2,000 moves.</summary>
     private static string LongSnakeFile()
     {
-        var tail = string.Concat(Enumerable.Repeat("LLLLLLLLLLLLLLLLLLLD" + "RRRRRRRRRRRRRRRRRRRD", 2)) + "LLLLLLLLLLLLLLLLLLL";
-        var header = $"// squiggly v1 game=snake seed=1 tick=500 status=playing score=96 dir=R head=19,0 tail={tail} food=0,9";
         var game = SnakeGame.Instance;
-        var state = Header.Parse(header).State!;
-        return header + "\n" + string.Join("\n", Canvas.Lines(game, state, "")) + "\nnamespace Arcade;\n";
+        var state = (SnakeState)game.NewGame(2026);
+        var keys = "";
+        while (keys.Length < 2000 && state.Status == GameStatus.Playing)
+        {
+            var food = state.Food ?? state.Head;
+            var options = new[]
+            {
+                food.X < state.Head.X ? SnakeGame.Left : SnakeGame.Right,
+                food.Y < state.Head.Y ? SnakeGame.Up : SnakeGame.Down,
+                SnakeGame.Up, SnakeGame.Right, SnakeGame.Down, SnakeGame.Left,
+            };
+            var move = options.FirstOrDefault(a => game.Step(state, a).Status == GameStatus.Playing) ?? SnakeGame.Wait;
+            keys = game.AppendKey(keys, state, move);
+            state = (SnakeState)game.Step(state, move);
+        }
+
+        MoveCount = keys.Length;
+        var lines = Canvas.Lines(game, game.NewGame(2026), "").ToArray();
+        lines[lines.Length - 1] = Canvas.KeysLine("", keys);
+        return Header.Serialize(game, 2026) + "\n" + string.Join("\n", lines) + "\nnamespace Arcade;\n";
     }
+
+    /// <summary>How many moves the long Snake replays; printed in the setup so the README can quote it.</summary>
+    public static int MoveCount { get; private set; }
 }

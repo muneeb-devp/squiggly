@@ -36,10 +36,8 @@ Do this in each IDE. Close and reopen the IDE first, since IDEs cache analyzer D
 | Start Snake: canvas appears, snake and food are drawn | [ ] | [ ] | [ ] |
 | Click at the end of `// keys:` and type 20 moves with w a s d; the board redraws as you type | [ ] | [ ] | [ ] |
 | Hold `d`: the snake keeps moving until you let go | [ ] | [ ] | [ ] |
-| A move from the lightbulb menu still works; the caret stays on line 1 | [ ] | [ ] | [ ] |
-| Save progress folds the typed keys into the header and empties the keys line | [ ] | [ ] | [ ] |
+| A move from the lightbulb menu is appended to the keys line; the caret stays on line 1 | [ ] | [ ] | [ ] |
 | The preview matches what gets applied | [ ] | [ ] | [ ] |
-| Pause, then Resume | [ ] | [ ] | [ ] |
 | Lose (run into a wall): GAME OVER appears on line 1 | [ ] | [ ] | [ ] |
 | Play again works; Switch game returns to the ready menu | [ ] | [ ] | [ ] |
 | Tetris: start, then type a d w s x on the keys line to move, rotate, drop and clear a line | [ ] | [ ] | [ ] |

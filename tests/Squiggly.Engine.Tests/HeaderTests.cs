@@ -1,5 +1,3 @@
-using System.Linq;
-
 namespace Squiggly.Engine.Tests;
 
 public class HeaderTests
@@ -27,50 +25,45 @@ public class HeaderTests
     }
 
     [Fact]
-    public void Serializes_canonically_in_the_documented_order()
+    public void Header_holds_only_the_game_and_its_seed()
     {
-        var state = new SnakeState
-        {
-            Seed = 8812,
-            Tick = 37,
-            Status = GameStatus.Playing,
-            Score = 4,
-            Dir = Direction.Right,
-            Head = new Point(10, 5),
-            Tail = "LL",
-            Food = new Point(14, 7),
-        };
-
-        Assert.Equal(
-            "// squiggly v1 game=snake seed=8812 tick=37 status=playing score=4 dir=R head=10,5 tail=LL food=14,7",
-            Header.Serialize(SnakeGame.Instance, state));
+        Assert.Equal("// squiggly v1 game=snake seed=8812", Header.Serialize(SnakeGame.Instance, 8812));
     }
 
     [Fact]
-    public void Accepts_keys_in_any_order()
+    public void Parses_game_and_seed_in_any_order()
     {
-        var result = Header.Parse("// squiggly v1 food=14,7 tail=LL head=10,5 dir=R score=4 status=playing tick=37 seed=8812 game=snake");
+        var result = Header.Parse("// squiggly v1 seed=4294967295 game=tetris");
         Assert.Equal(HeaderKind.Game, result.Kind);
-        Assert.Equal(new Point(14, 7), ((SnakeState)result.State!).Food);
+        Assert.Same(TetrisGame.Instance, result.Game);
+        Assert.Equal(4294967295u, result.Seed);
+    }
+
+    [Fact]
+    public void Serialize_round_trips_for_every_game()
+    {
+        foreach (var game in Games.All)
+        {
+            foreach (var seed in new uint[] { 0, 1, 8812, uint.MaxValue })
+            {
+                var parsed = Header.Parse(Header.Serialize(game, seed));
+                Assert.Same(game, parsed.Game);
+                Assert.Equal(seed, parsed.Seed);
+            }
+        }
     }
 
     [Theory]
-    [InlineData("// squiggly v2 game=snake", "version")]
+    [InlineData("// squiggly v2 game=snake seed=1", "version")]
     [InlineData("// squiggly v1 game", "game")]
     [InlineData("// squiggly v1 seed=1", "game")]
-    [InlineData("// squiggly v1 game=pong", "game")]
-    [InlineData("// squiggly v1 game=snake game=snake", "game")]
-    [InlineData("// squiggly v1 game=snake seed=1 tick=0 status=playing score=0 dir=R head=10,5 tail=LL", "food")]
-    [InlineData("// squiggly v1 game=snake seed=1 tick=0 status=playing score=0 dir=R head=10,5 tail=LL food=1,1 lives=3", "lives")]
-    [InlineData("// squiggly v1 game=snake seed=-1 tick=0 status=playing score=0 dir=R head=10,5 tail=LL food=1,1", "seed")]
-    [InlineData("// squiggly v1 game=snake seed=1 tick=07 status=playing score=0 dir=R head=10,5 tail=LL food=1,1", "tick")]
-    [InlineData("// squiggly v1 game=snake seed=1 tick=0 status=dancing score=0 dir=R head=10,5 tail=LL food=1,1", "status")]
-    [InlineData("// squiggly v1 game=snake seed=1 tick=0 status=playing score=0 dir=X head=10,5 tail=LL food=1,1", "dir")]
-    [InlineData("// squiggly v1 game=snake seed=1 tick=0 status=playing score=0 dir=R head=20,5 tail=LL food=1,1", "head")]
-    [InlineData("// squiggly v1 game=snake seed=1 tick=0 status=playing score=0 dir=R head=1,5 tail=LLL food=1,1", "tail")]
-    [InlineData("// squiggly v1 game=tetris seed=1 tick=0 status=playing score=0 piece=Q rot=0 pos=3,0 next=T drawn=2 lines=0 board=0", "piece")]
-    [InlineData("// squiggly v1 game=tetris seed=1 tick=0 status=playing score=0 piece=I rot=0 pos=3,0 next=T drawn=2 lines=0 board=0.0", "board")]
-    [InlineData("// squiggly v1 game=mines seed=1 tick=0 status=playing score=0 mines=1.0.0.0.0.0.0.0 open=0.0.0.0.0.0.0.0 flags=0.0.0.0.0.0.0.0", "mines")]
+    [InlineData("// squiggly v1 game=pong seed=1", "game")]
+    [InlineData("// squiggly v1 game=snake game=snake seed=1", "game")]
+    [InlineData("// squiggly v1 game=snake", "seed")]
+    [InlineData("// squiggly v1 game=snake seed=-1", "seed")]
+    [InlineData("// squiggly v1 game=snake seed=007", "seed")]
+    [InlineData("// squiggly v1 game=snake seed=4294967296", "seed")]
+    [InlineData("// squiggly v1 game=snake seed=1 dir=R", "dir")]
     public void Bad_headers_name_the_bad_key(string line, string key)
     {
         var result = Header.Parse(line);
@@ -80,45 +73,33 @@ public class HeaderTests
     }
 
     [Fact]
-    public void Round_trips_every_reachable_state_byte_for_byte()
+    public void Describe_writes_a_canonical_snapshot()
     {
+        Assert.Equal(
+            "game=snake seed=8812 tick=0 status=playing score=0 dir=R head=10,5 tail=LL food=0,2",
+            Header.Describe(SnakeGame.Instance, SnakeGame.Instance.NewGame(8812)));
+    }
+
+    [Fact]
+    public void Recorded_keys_replay_to_the_same_state_for_every_game()
+    {
+        // The keys line is the save game: whatever moves are made, writing them down with AppendKey and
+        // replaying them with ParseKeys must reproduce the exact same state.
         foreach (var game in Games.All)
         {
-            for (uint seed = 1; seed <= 40; seed++)
+            for (uint seed = 1; seed <= 25; seed++)
             {
-                foreach (var state in TestPlay.RandomStates(game, seed, 300))
+                var random = new Prng(seed);
+                var state = game.NewGame(seed);
+                var keys = "";
+                for (var move = 0; move < 300 && state.Status == GameStatus.Playing; move++)
                 {
-                    var text = Header.Serialize(game, state);
-                    var parsed = Header.Parse(text);
-                    Assert.True(parsed.Kind == HeaderKind.Game, $"{text}: {parsed.Error}");
-                    Assert.Same(game, parsed.Game);
-                    Assert.Equal(state, parsed.State);
-                    Assert.Equal(text, Header.Serialize(game, parsed.State!));
+                    var action = TestPlay.PickAction(game, state, ref random);
+                    keys = game.AppendKey(keys, state, action);
+                    state = game.Step(state, action);
+                    Assert.Equal(state, GameFile.Replay(game, game.NewGame(seed), keys));
                 }
             }
         }
-    }
-
-    [Fact]
-    public void Paused_and_over_states_round_trip()
-    {
-        foreach (var game in Games.All)
-        {
-            var playing = game.NewGame(5);
-            foreach (var status in new[] { GameStatus.Paused, GameStatus.Over })
-            {
-                var state = playing with { Status = status };
-                Assert.Equal(state, Header.Parse(Header.Serialize(game, state)).State);
-            }
-        }
-    }
-
-    [Fact]
-    public void Headers_stay_short_enough_to_read()
-    {
-        var longest = Games.All
-            .SelectMany(game => TestPlay.RandomStates(game, 3, 300).Select(state => Header.Serialize(game, state)))
-            .Max(text => text.Length);
-        Assert.InRange(longest, 1, 260);
     }
 }

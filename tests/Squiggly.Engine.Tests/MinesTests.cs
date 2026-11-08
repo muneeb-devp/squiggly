@@ -92,12 +92,25 @@ public class MinesTests
     }
 
     [Fact]
+    public void Cell_moves_are_recorded_as_tokens()
+    {
+        var start = Game.NewGame(1);
+        var keys = Game.AppendKey("", start, MinesGame.Reveal(new Point(5, 3)));
+        keys = Game.AppendKey(keys, start, MinesGame.Flag(new Point(12, 0)));
+        keys = Game.AppendKey(keys, start, MinesGame.Unflag(new Point(12, 0)));
+        Assert.Equal("r5,3 f12,0 u12,0", keys);
+        Assert.Equal(
+            new[] { MinesGame.Reveal(new Point(5, 3)), MinesGame.Flag(new Point(12, 0)), MinesGame.Unflag(new Point(12, 0)) },
+            Game.ParseKeys(keys + " junk r9 x1,1"));
+    }
+
+    [Fact]
     public void Replay_is_deterministic()
     {
         var moves = new[] { (3, 3), (10, 2), (0, 7), (15, 0), (7, 5), (12, 6) }
             .Select(c => MinesGame.Reveal(new Point(c.Item1, c.Item2)));
         var final = TestPlay.Replay(Game, 8812, moves);
-        Assert.Equal(GoldenMines, Header.Serialize(Game, final));
+        Assert.Equal(GoldenMines, Header.Describe(Game, final));
     }
 
     private static BitGrid Layout(params (int X, int Y)[] cells)
@@ -112,5 +125,5 @@ public class MinesTests
     }
 
     private const string GoldenMines =
-        "// squiggly v1 game=mines seed=8812 tick=2 status=over score=1 mines=606.4020.4cc.20.100.9800.0.0 open=0.0.400.8.0.0.0.0 flags=0.0.0.0.0.0.0.0";
+        "game=mines seed=8812 tick=2 status=over score=1 mines=606.4020.4cc.20.100.9800.0.0 open=0.0.400.8.0.0.0.0 flags=0.0.0.0.0.0.0.0";
 }

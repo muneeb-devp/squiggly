@@ -49,18 +49,15 @@ public sealed class GameFile
     public int CanvasRows { get; }
 
     /// <summary>
-    /// True when the canvas has the game's exact row count and width, followed by a <c>// keys:</c> line
-    /// for games with key controls. Always false when there is no game.
+    /// True when the canvas has the game's exact row count and width, followed by a <c>// keys:</c> line.
+    /// Always false when there is no game.
     /// </summary>
     public bool CanvasValid { get; }
 
-    /// <summary>The keys typed on the line directly under the canvas rows; empty when there are none.</summary>
+    /// <summary>The moves on the line directly under the canvas rows; empty when there are none.</summary>
     public string Keys { get; }
 
-    /// <summary>
-    /// The current game state: the header's state with every typed key replayed on top of it. Null when
-    /// there is no game. Code fixes act on this state and fold the keys back into the header.
-    /// </summary>
+    /// <summary>The current game state: a new game from the header's seed with every move replayed. Null when there is no game.</summary>
     public GameState? State { get; }
 
     public IReadOnlyList<Mark> Marks { get; }
@@ -100,7 +97,8 @@ public sealed class GameFile
         }
 
         var game = header.Game!;
-        var valid = canvasRows == game.Height && (hasKeysLine || !game.KeyControls);
+        var state = Replay(game, game.NewGame(header.Seed), keys);
+        var valid = canvasRows == game.Height && hasKeysLine;
         for (var i = 0; valid && i < game.Height; i++)
         {
             valid = Canvas.IsValidRow(following[i], game.Width);
@@ -111,16 +109,14 @@ public sealed class GameFile
             var problem = canvasRows == 0 ? "missing" : "damaged";
             OnHeader(MarkKind.CanvasError, string.Format(
                 CultureInfo.InvariantCulture,
-                "Squiggly canvas is {0}: {1} needs {2} rows of //| plus {3} characters plus |{4}. Caret here, Ctrl+. to repair it",
+                "Squiggly canvas is {0}: {1} needs {2} rows of //| plus {3} characters plus |, then a // keys: line. Caret here, Ctrl+. to repair it",
                 problem,
                 game.Name,
                 game.Height,
-                game.Width * 2,
-                game.KeyControls ? ", then a // keys: line" : ""));
-            return new GameFile(headerLine, header, canvasRows, false, keys, header.State, marks);
+                game.Width * 2));
+            return new GameFile(headerLine, header, canvasRows, false, keys, state, marks);
         }
 
-        var state = Replay(game, header.State!, keys);
         OnHeader(state.Status == GameStatus.Over ? MarkKind.GameOver : MarkKind.Hud,
             state.Status == GameStatus.Over ? game.GameOver(state) : game.Hud(state));
 
@@ -135,22 +131,14 @@ public sealed class GameFile
     }
 
     /// <summary>
-    /// Applies each typed key in order. Keys that mean nothing (including spaces) are skipped, and keys
-    /// typed after the game ends or while it is paused change nothing, because Step ignores them.
+    /// Applies each move on the keys line in order. Moves made after the game ends change nothing,
+    /// because Step ignores them.
     /// </summary>
     public static GameState Replay(IGame game, GameState state, string keys)
     {
-        if (!game.KeyControls)
+        foreach (var action in game.ParseKeys(keys))
         {
-            return state;
-        }
-
-        foreach (var key in keys)
-        {
-            if (game.KeyAction(key) is { } action)
-            {
-                state = game.Step(state, action);
-            }
+            state = game.Step(state, action);
         }
 
         return state;

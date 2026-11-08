@@ -5,13 +5,15 @@ namespace Squiggly.Engine.Tests;
 
 public class ControllerTests
 {
-    private static GameFile File(string header, IReadOnlyList<string>? canvas = null) =>
-        GameFile.Read(header, (canvas ?? new string[0]).Concat(new[] { "namespace Arcade;" }).ToArray());
+    private static GameFile File(string header, IEnumerable<string>? block = null) =>
+        GameFile.Read(header, (block ?? new string[0]).Concat(new[] { "namespace Arcade;" }).ToArray());
 
-    private static GameFile Playing(IGame game, GameStatus status = GameStatus.Playing)
+    /// <summary>A file for <paramref name="game"/> from seed 77 with <paramref name="keys"/> on the keys line.</summary>
+    private static GameFile Game(IGame game, string keys = "")
     {
-        var state = game.NewGame(77) with { Status = status };
-        return File(Header.Serialize(game, state), Canvas.Lines(game, state, ""));
+        var lines = Canvas.Lines(game, game.NewGame(77), "").ToArray();
+        lines[lines.Length - 1] = Canvas.KeysLine("", keys);
+        return File(Header.Serialize(game, 77), lines);
     }
 
     private static string[] Titles(IEnumerable<Command> commands) => commands.Select(c => c.Title).ToArray();
@@ -25,146 +27,112 @@ public class ControllerTests
     }
 
     [Fact]
-    public void Playing_snake_offers_moves_then_pause_and_restart()
+    public void Playing_snake_offers_moves_then_restart()
     {
         Assert.Equal(
-            new[] { "Squiggly: Move up", "Squiggly: Move down", "Squiggly: Move left", "Squiggly: Move right", "Squiggly: Wait", "Squiggly: Pause", "Squiggly: Restart" },
-            Titles(Controller.Menu(Playing(SnakeGame.Instance))));
+            new[] { "Squiggly: Move up", "Squiggly: Move down", "Squiggly: Move left", "Squiggly: Move right", "Squiggly: Wait", "Squiggly: Restart" },
+            Titles(Controller.Menu(Game(SnakeGame.Instance))));
     }
 
     [Fact]
     public void Playing_tetris_offers_its_actions()
     {
         Assert.Equal(
-            new[] { "Squiggly: Move left", "Squiggly: Move right", "Squiggly: Rotate", "Squiggly: Soft drop", "Squiggly: Hard drop", "Squiggly: Pause", "Squiggly: Restart" },
-            Titles(Controller.Menu(Playing(TetrisGame.Instance))));
-    }
-
-    [Fact]
-    public void Paused_offers_resume_and_restart()
-    {
-        Assert.Equal(new[] { "Squiggly: Resume", "Squiggly: Restart" }, Titles(Controller.Menu(Playing(SnakeGame.Instance, GameStatus.Paused))));
+            new[] { "Squiggly: Move left", "Squiggly: Move right", "Squiggly: Rotate", "Squiggly: Soft drop", "Squiggly: Hard drop", "Squiggly: Restart" },
+            Titles(Controller.Menu(Game(TetrisGame.Instance))));
     }
 
     [Fact]
     public void Over_offers_play_again_and_switch_game()
     {
-        Assert.Equal(new[] { "Squiggly: Play again", "Squiggly: Switch game" }, Titles(Controller.Menu(Playing(SnakeGame.Instance, GameStatus.Over))));
+        Assert.Equal(new[] { "Squiggly: Play again", "Squiggly: Switch game" }, Titles(Controller.Menu(Game(SnakeGame.Instance, "dddddddddd"))));
     }
 
     [Fact]
     public void Bad_header_offers_reset_only()
     {
-        var menu = Controller.Menu(File("// squiggly v1 game=pong"));
+        var file = File("// squiggly v1 game=pong seed=1");
+        var menu = Controller.Menu(file);
         Assert.Equal(new[] { "Squiggly: Reset game" }, Titles(menu));
-        Assert.Equal(new FileEdit("// squiggly", null), Controller.Apply(File("// squiggly v1 game=pong"), menu[0], 1));
+        Assert.Equal(new FileEdit("// squiggly", null), Controller.Apply(file, menu[0], 1));
     }
 
     [Fact]
-    public void Damaged_canvas_offers_repair_which_rewrites_it()
+    public void Damaged_canvas_offers_repair_which_keeps_the_moves()
     {
         var game = SnakeGame.Instance;
-        var state = game.NewGame(3);
-        var file = File(Header.Serialize(game, state), new[] { "//|....|" });
+        var file = File(Header.Serialize(game, 3), new[] { "//|....|", "// keys: ddw" });
         Assert.False(file.CanvasValid);
         var menu = Controller.Menu(file);
         Assert.Equal(new[] { "Squiggly: Repair canvas" }, Titles(menu));
 
         var edit = Controller.Apply(file, menu[0], 99);
-        Assert.Equal(Header.Serialize(game, state), edit.Header);
-        Assert.Equal(game.Canvas(state), edit.CanvasRows);
+        Assert.Equal(Header.Serialize(game, 3), edit.Header);
+        Assert.Equal(game.Canvas(game.NewGame(3)), edit.CanvasRows);
+        Assert.Equal("ddw", edit.Keys);
     }
 
     [Fact]
     public void Equivalence_keys_are_stable_and_unique()
     {
-        var keys = Controller.Menu(Playing(SnakeGame.Instance)).Select(c => c.Key).ToArray();
-        Assert.Equal(new[] { "squiggly.snake.up", "squiggly.snake.down", "squiggly.snake.left", "squiggly.snake.right", "squiggly.snake.wait", "squiggly.pause", "squiggly.restart" }, keys);
+        var keys = Controller.Menu(Game(SnakeGame.Instance)).Select(c => c.Key).ToArray();
+        Assert.Equal(new[] { "squiggly.snake.up", "squiggly.snake.down", "squiggly.snake.left", "squiggly.snake.right", "squiggly.snake.wait", "squiggly.restart" }, keys);
     }
 
     [Fact]
-    public void New_game_writes_header_and_canvas_from_the_given_seed()
+    public void New_game_writes_header_canvas_and_empty_keys_from_the_given_seed()
     {
-        var menu = Controller.Menu(File("// squiggly"));
-        var edit = Controller.Apply(File("// squiggly"), menu[0], 4242);
-        Assert.Equal(Header.Serialize(SnakeGame.Instance, SnakeGame.Instance.NewGame(4242)), edit.Header);
+        var file = File("// squiggly");
+        var edit = Controller.Apply(file, Controller.Menu(file)[0], 4242);
+        Assert.Equal("// squiggly v1 game=snake seed=4242", edit.Header);
         Assert.Equal(10, edit.CanvasRows!.Count);
         Assert.All(edit.CanvasRows, row => Assert.Equal(new string('.', 40), row));
+        Assert.Equal("", edit.Keys);
     }
 
-    [Fact]
-    public void Actions_step_the_game_and_leave_static_canvases_alone()
+    [Theory]
+    [InlineData(0, "dd", "ddw")]
+    [InlineData(3, "dd", "ddd")]
+    [InlineData(4, "ddw", "ddww")]
+    public void Menu_moves_are_recorded_on_the_keys_line(int entry, string keys, string expected)
     {
-        var file = Playing(SnakeGame.Instance);
-        var up = Controller.Menu(file)[0];
-        var edit = Controller.Apply(file, up, 1);
-        var expected = SnakeGame.Instance.Step(file.Header.State!, SnakeGame.Up);
-        Assert.Equal(Header.Serialize(SnakeGame.Instance, expected), edit.Header);
-        Assert.Null(edit.CanvasRows);
-    }
-
-    [Fact]
-    public void Pause_and_resume_do_not_advance_the_tick()
-    {
-        var file = Playing(SnakeGame.Instance);
-        var pause = Controller.Menu(file).Single(c => c.Kind == CommandKind.Pause);
-        var paused = Header.Parse(Controller.Apply(file, pause, 1).Header).State!;
-        Assert.Equal(GameStatus.Paused, paused.Status);
-        Assert.Equal(file.Header.State!.Tick, paused.Tick);
+        var file = Game(SnakeGame.Instance, keys);
+        var edit = Controller.Apply(file, Controller.Menu(file)[entry], 1);
+        Assert.Equal(new FileEdit(Header.Serialize(SnakeGame.Instance, 77), null, expected), edit);
     }
 
     [Fact]
     public void Switch_game_returns_to_ready()
     {
-        var file = Playing(TetrisGame.Instance, GameStatus.Over);
+        var file = Game(TetrisGame.Instance, new string('x', 60));
+        Assert.Equal(GameStatus.Over, file.State!.Status);
         var edit = Controller.Apply(file, Controller.Menu(file)[1], 1);
         Assert.Equal("// squiggly", edit.Header);
     }
 
     [Fact]
-    public void Minesweeper_cells_offer_reveal_and_flag_and_rewrite_the_canvas()
+    public void Minesweeper_cells_offer_reveal_and_flag_and_record_the_move()
     {
-        var file = Playing(MinesGame.Instance);
-        Assert.Equal(new[] { "Squiggly: Pause", "Squiggly: Restart" }, Titles(Controller.Menu(file)));
+        var file = Game(MinesGame.Instance);
+        Assert.Equal(new[] { "Squiggly: Restart" }, Titles(Controller.Menu(file)));
         var cellMenu = Controller.CellMenu(file, new Point(4, 4));
         Assert.Equal(new[] { "Squiggly: Reveal", "Squiggly: Flag" }, Titles(cellMenu));
         Assert.Equal(new[] { "squiggly.mines.reveal", "squiggly.mines.flag" }, cellMenu.Select(c => c.Key));
 
         var edit = Controller.Apply(file, cellMenu[0], 1);
-        Assert.NotNull(edit.CanvasRows);
-        Assert.NotEqual(MinesGame.Instance.Canvas(file.Header.State!), edit.CanvasRows);
-    }
+        Assert.Equal("r4,4", edit.Keys);
+        Assert.Equal(MinesGame.Instance.Canvas(GameFile.Replay(MinesGame.Instance, MinesGame.Instance.NewGame(77), "r4,4")), edit.CanvasRows);
 
-    [Fact]
-    public void Typed_keys_add_save_progress_which_folds_them_into_the_header()
-    {
-        var game = SnakeGame.Instance;
-        var state = game.NewGame(77);
-        var lines = Canvas.Lines(game, state, "").Take(10).Append("// keys: ddw").ToArray();
-        var file = File(Header.Serialize(game, state), lines);
-        var menu = Controller.Menu(file);
-        Assert.Equal("Squiggly: Save progress (move typed keys into the header)", menu.Last().Title);
-
-        var edit = Controller.Apply(file, menu.Last(), 1);
-        var expected = GameFile.Replay(game, state, "ddw");
-        Assert.Equal(new FileEdit(Header.Serialize(game, expected), null, ""), edit);
-    }
-
-    [Fact]
-    public void Menu_moves_act_on_the_state_after_typed_keys()
-    {
-        var game = SnakeGame.Instance;
-        var state = game.NewGame(77);
-        var lines = Canvas.Lines(game, state, "").Take(10).Append("// keys: dd").ToArray();
-        var file = File(Header.Serialize(game, state), lines);
-        var edit = Controller.Apply(file, Controller.Menu(file)[0], 1);
-        Assert.Equal(Header.Serialize(game, game.Step(GameFile.Replay(game, state, "dd"), SnakeGame.Up)), edit.Header);
-        Assert.Equal("", edit.Keys);
+        var next = Game(MinesGame.Instance, "r4,4");
+        var open = ((MinesState)next.State!).Open;
+        var covered = Enumerable.Range(0, 128).Select(i => new Point(i % 16, i / 16)).First(p => !open[p]);
+        var flag = Controller.CellMenu(next, covered)[1];
+        Assert.Equal("r4,4 f" + covered, Controller.Apply(next, flag, 1).Keys);
     }
 
     [Fact]
     public void Snake_cells_offer_nothing()
     {
-        Assert.Empty(Controller.CellMenu(Playing(SnakeGame.Instance), new Point(10, 5)));
+        Assert.Empty(Controller.CellMenu(Game(SnakeGame.Instance), new Point(10, 5)));
     }
 }
