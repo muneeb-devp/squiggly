@@ -30,12 +30,14 @@ public readonly record struct Mark(MarkKind Kind, int Row, int Column, int Lengt
 /// </summary>
 public sealed class GameFile
 {
-    private GameFile(string headerLine, HeaderResult header, int canvasRows, bool canvasValid, IReadOnlyList<Mark> marks)
+    private GameFile(string headerLine, HeaderResult header, int canvasRows, bool canvasValid, string keys, GameState? state, IReadOnlyList<Mark> marks)
     {
         HeaderLine = headerLine;
         Header = header;
         CanvasRows = canvasRows;
         CanvasValid = canvasValid;
+        Keys = keys;
+        State = state;
         Marks = marks;
     }
 
@@ -46,8 +48,20 @@ public sealed class GameFile
     /// <summary>How many consecutive <c>//|</c> lines follow the header.</summary>
     public int CanvasRows { get; }
 
-    /// <summary>True when the canvas has the game's exact row count and width. Always false when there is no game.</summary>
+    /// <summary>
+    /// True when the canvas has the game's exact row count and width, followed by a <c>// keys:</c> line
+    /// for games with key controls. Always false when there is no game.
+    /// </summary>
     public bool CanvasValid { get; }
+
+    /// <summary>The keys typed on the line directly under the canvas rows; empty when there are none.</summary>
+    public string Keys { get; }
+
+    /// <summary>
+    /// The current game state: the header's state with every typed key replayed on top of it. Null when
+    /// there is no game. Code fixes act on this state and fold the keys back into the header.
+    /// </summary>
+    public GameState? State { get; }
 
     public IReadOnlyList<Mark> Marks { get; }
 
@@ -56,7 +70,8 @@ public sealed class GameFile
 
     /// <summary>
     /// Reads a game file. <paramref name="following"/> holds the lines after the header; callers pass at
-    /// least <see cref="Games.MaxHeight"/> + 1 of them (or all that exist) so an overlong canvas is noticed.
+    /// least <see cref="Games.MaxHeight"/> + 2 of them (or all that exist) so an overlong canvas and the
+    /// keys line are both seen.
     /// </summary>
     public static GameFile Read(string headerLine, IReadOnlyList<string> following)
     {
@@ -67,6 +82,9 @@ public sealed class GameFile
             canvasRows++;
         }
 
+        var hasKeysLine = canvasRows < following.Count && Canvas.IsKeysLine(following[canvasRows]);
+        var keys = hasKeysLine ? Canvas.ReadKeys(following[canvasRows]) : "";
+
         var marks = new List<Mark>();
         var indent = HeaderExtent(headerLine, out var headerLength);
         void OnHeader(MarkKind kind, string message) => marks.Add(new Mark(kind, -1, indent, headerLength, message));
@@ -75,15 +93,14 @@ public sealed class GameFile
         {
             case HeaderKind.Error:
                 OnHeader(MarkKind.HeaderError, $"Squiggly header could not be parsed: {header.Error}. Caret here, Ctrl+. to reset the game");
-                return new GameFile(headerLine, header, canvasRows, false, marks);
+                return new GameFile(headerLine, header, canvasRows, false, keys, null, marks);
             case HeaderKind.Ready:
                 OnHeader(MarkKind.Hud, "Squiggly is ready. Caret here, Ctrl+. (Alt+Enter in Rider) to start a game");
-                return new GameFile(headerLine, header, canvasRows, false, marks);
+                return new GameFile(headerLine, header, canvasRows, false, keys, null, marks);
         }
 
         var game = header.Game!;
-        var state = header.State!;
-        var valid = canvasRows == game.Height;
+        var valid = canvasRows == game.Height && (hasKeysLine || !game.KeyControls);
         for (var i = 0; valid && i < game.Height; i++)
         {
             valid = Canvas.IsValidRow(following[i], game.Width);
@@ -94,14 +111,16 @@ public sealed class GameFile
             var problem = canvasRows == 0 ? "missing" : "damaged";
             OnHeader(MarkKind.CanvasError, string.Format(
                 CultureInfo.InvariantCulture,
-                "Squiggly canvas is {0}: {1} needs {2} rows of //| plus {3} characters plus |. Caret here, Ctrl+. to repair it",
+                "Squiggly canvas is {0}: {1} needs {2} rows of //| plus {3} characters plus |{4}. Caret here, Ctrl+. to repair it",
                 problem,
                 game.Name,
                 game.Height,
-                game.Width * 2));
-            return new GameFile(headerLine, header, canvasRows, false, marks);
+                game.Width * 2,
+                game.KeyControls ? ", then a // keys: line" : ""));
+            return new GameFile(headerLine, header, canvasRows, false, keys, header.State, marks);
         }
 
+        var state = Replay(game, header.State!, keys);
         OnHeader(state.Status == GameStatus.Over ? MarkKind.GameOver : MarkKind.Hud,
             state.Status == GameStatus.Over ? game.GameOver(state) : game.Hud(state));
 
@@ -112,7 +131,29 @@ public sealed class GameFile
             marks.Add(new Mark(KindOf(cell.Color), cell.Y, Canvas.CellColumn(rowIndent, cell.X), 2, cell.Label));
         }
 
-        return new GameFile(headerLine, header, canvasRows, true, marks);
+        return new GameFile(headerLine, header, canvasRows, true, keys, state, marks);
+    }
+
+    /// <summary>
+    /// Applies each typed key in order. Keys that mean nothing (including spaces) are skipped, and keys
+    /// typed after the game ends or while it is paused change nothing, because Step ignores them.
+    /// </summary>
+    public static GameState Replay(IGame game, GameState state, string keys)
+    {
+        if (!game.KeyControls)
+        {
+            return state;
+        }
+
+        foreach (var key in keys)
+        {
+            if (game.KeyAction(key) is { } action)
+            {
+                state = game.Step(state, action);
+            }
+        }
+
+        return state;
     }
 
     /// <summary>Maps a pixel back to its board cell, for cell-targeted input.</summary>

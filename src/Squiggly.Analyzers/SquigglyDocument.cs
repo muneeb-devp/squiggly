@@ -62,12 +62,12 @@ public sealed class SquigglyDocument
         return null;
     }
 
-    /// <summary>Reads the header and enough following lines to validate the largest canvas.</summary>
+    /// <summary>Reads the header and enough following lines to validate the largest canvas and its keys line.</summary>
     public GameFile Read()
     {
         var lines = Text.Lines;
         var following = new List<string>();
-        var last = System.Math.Min(lines.Count - 1, HeaderLineNumber + Games.MaxHeight + 1);
+        var last = System.Math.Min(lines.Count - 1, HeaderLineNumber + Games.MaxHeight + 2);
         for (var i = HeaderLineNumber + 1; i <= last; i++)
         {
             following.Add(lines[i].ToString());
@@ -97,9 +97,10 @@ public sealed class SquigglyDocument
     }
 
     /// <summary>
-    /// Turns an engine edit into text changes: the header text (keeping its indent), plus only the canvas
-    /// rows that differ. A canvas of a different size replaces the existing <c>//|</c> block as a whole.
-    /// Line endings follow the file's own.
+    /// Turns an engine edit into text changes: the header text (keeping its indent), plus only the lines
+    /// that differ in the block under it (canvas rows, then the keys line). A block of a different size,
+    /// such as a canvas for another game, replaces the existing block as a whole. Line endings follow the
+    /// file's own.
     /// </summary>
     public IReadOnlyList<TextChange> Changes(FileEdit edit)
     {
@@ -112,29 +113,53 @@ public sealed class SquigglyDocument
             changes.Add(new TextChange(TextSpan.FromBounds(header.Start + indent.Length, header.End), edit.Header));
         }
 
-        if (edit.CanvasRows is not { } rows)
+        if (edit.CanvasRows is null && edit.Keys is null)
         {
             return changes;
         }
 
+        // The existing block: consecutive canvas rows, then the keys line if there is one.
         var lines = Text.Lines;
-        var existing = 0;
-        while (HeaderLineNumber + 1 + existing < lines.Count && Canvas.IsRow(lines[HeaderLineNumber + 1 + existing].ToString()))
+        var first = HeaderLineNumber + 1;
+        var rows = 0;
+        while (first + rows < lines.Count && Canvas.IsRow(lines[first + rows].ToString()))
         {
-            existing++;
+            rows++;
         }
 
-        var wanted = new string[rows.Count];
-        for (var i = 0; i < wanted.Length; i++)
+        var hasKeys = first + rows < lines.Count && Canvas.IsKeysLine(lines[first + rows].ToString());
+        var existing = rows + (hasKeys ? 1 : 0);
+
+        var wanted = new List<string>();
+        if (edit.CanvasRows is { } canvas)
         {
-            wanted[i] = Canvas.Row(indent, rows[i]);
+            foreach (var row in canvas)
+            {
+                wanted.Add(Canvas.Row(indent, row));
+            }
+        }
+        else
+        {
+            for (var i = 0; i < rows; i++)
+            {
+                wanted.Add(lines[first + i].ToString());
+            }
         }
 
-        if (existing == wanted.Length)
+        if (edit.Keys is { } keys)
+        {
+            wanted.Add(Canvas.KeysLine(indent, keys));
+        }
+        else if (hasKeys)
+        {
+            wanted.Add(lines[first + rows].ToString());
+        }
+
+        if (existing == wanted.Count)
         {
             for (var i = 0; i < existing; i++)
             {
-                var line = lines[HeaderLineNumber + 1 + i];
+                var line = lines[first + i];
                 if (line.ToString() != wanted[i])
                 {
                     changes.Add(new TextChange(line.Span, wanted[i]));
@@ -154,9 +179,7 @@ public sealed class SquigglyDocument
         }
         else
         {
-            var first = lines[HeaderLineNumber + 1];
-            var last = lines[HeaderLineNumber + existing];
-            changes.Add(new TextChange(TextSpan.FromBounds(first.Start, last.End), block));
+            changes.Add(new TextChange(TextSpan.FromBounds(lines[first].Start, lines[first + existing - 1].End), block));
         }
 
         return changes;

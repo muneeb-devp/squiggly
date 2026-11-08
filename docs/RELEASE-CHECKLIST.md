@@ -34,12 +34,15 @@ Do this in each IDE. Close and reopen the IDE first, since IDEs cache analyzer D
 | `Game.cs` shows the "Squiggly is ready" hint on line 1 | [ ] | [ ] | [ ] |
 | Lightbulb on line 1 lists New game: Snake, Tetris, Minesweeper | [ ] | [ ] | [ ] |
 | Start Snake: canvas appears, snake and food are drawn | [ ] | [ ] | [ ] |
-| Play 20 moves using only the keyboard; the caret stays on line 1 | [ ] | [ ] | [ ] |
+| Click at the end of `// keys:` and type 20 moves with w a s d; the board redraws as you type | [ ] | [ ] | [ ] |
+| Hold `d`: the snake keeps moving until you let go | [ ] | [ ] | [ ] |
+| A move from the lightbulb menu still works; the caret stays on line 1 | [ ] | [ ] | [ ] |
+| Save progress folds the typed keys into the header and empties the keys line | [ ] | [ ] | [ ] |
 | The preview matches what gets applied | [ ] | [ ] | [ ] |
 | Pause, then Resume | [ ] | [ ] | [ ] |
 | Lose (run into a wall): GAME OVER appears on line 1 | [ ] | [ ] | [ ] |
 | Play again works; Switch game returns to the ready menu | [ ] | [ ] | [ ] |
-| Tetris: start, rotate, hard drop, clear a line | [ ] | [ ] | [ ] |
+| Tetris: start, then type a d w s x on the keys line to move, rotate, drop and clear a line | [ ] | [ ] | [ ] |
 | Minesweeper: lightbulb on a dotted cell offers Reveal and Flag; reveal shows numbers | [ ] | [ ] | [ ] |
 | Corrupt the header (e.g. `seed=x`): one warning, Reset game fixes it | [ ] | [ ] | [ ] |
 | Delete a canvas row: one warning, Repair canvas fixes it | [ ] | [ ] | [ ] |

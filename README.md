@@ -13,11 +13,20 @@ dotnet add package Squiggly
 echo "// squiggly" > Game.cs
 ```
 
-Open `Game.cs` in your IDE, put the caret on the first line, and press <kbd>Ctrl</kbd>+<kbd>.</kbd>. Pick **Squiggly: New game: Snake**.
+Open `Game.cs` in your IDE, put the caret on the first line, and press <kbd>Ctrl</kbd>+<kbd>.</kbd>. Pick **Squiggly: New game: Snake**. Then click at the end of the `// keys:` line under the board and type <kbd>w</kbd> <kbd>a</kbd> <kbd>s</kbd> <kbd>d</kbd>.
 
 ## How to play
 
-Every move is a code fix. Keep the caret anywhere on the first line (the header) and open the lightbulb menu:
+**Steer by typing.** Snake and Tetris put a `// keys:` line under the board. Put the caret at the end of it and type: every key is one move, and the board redraws as you type. Hold a key down and the snake keeps gliding.
+
+| Game | Keys |
+|---|---|
+| Snake | <kbd>w</kbd> up, <kbd>a</kbd> left, <kbd>s</kbd> down, <kbd>d</kbd> right. Pressing the way you're already going moves one step forward. |
+| Tetris | <kbd>a</kbd> / <kbd>d</kbd> move, <kbd>w</kbd> rotate, <kbd>s</kbd> soft drop, <kbd>x</kbd> hard drop |
+
+Other characters are ignored. The keys you type are your move history: the header holds where the run started, and the analyzer replays the keys on top of it. **Save progress** in the menu folds them into the header and empties the line.
+
+**Everything else is in the lightbulb menu.** New game, Pause, Restart, Play again and the Minesweeper cells are code fixes. Put the caret on the first line (the header), or on a Minesweeper cell, and open the menu:
 
 | IDE | Open the menu |
 |---|---|
@@ -25,13 +34,11 @@ Every move is a code fix. Keep the caret anywhere on the first line (the header)
 | VS Code with C# Dev Kit | <kbd>Ctrl</kbd>+<kbd>.</kbd> (<kbd>Cmd</kbd>+<kbd>.</kbd> on macOS) |
 | JetBrains Rider | <kbd>Alt</kbd>+<kbd>Enter</kbd> (<kbd>Option</kbd>+<kbd>Enter</kbd> on macOS) |
 
-The caret stays on the header after each move, so you can keep pressing the shortcut and picking moves from the menu.
-
-| Game | Board | Moves |
+| Game | Board | Rules |
 |---|---|---|
-| **Snake** | 20 x 10 | Move up, down, left, right, or Wait. Eat the food (dots), avoid the walls and yourself. Fill the board to win. |
-| **Tetris** | 10 x 20 | Move left, Move right, Rotate, Soft drop, Hard drop. Every move except Hard drop also pulls the piece down one row. Dots show where the piece will land. |
-| **Minesweeper** | 16 x 8, 16 mines | Put the caret on any dotted cell and open the menu there: Reveal or Flag. The first reveal is always safe. |
+| **Snake** | 20 x 10 | Eat the food (dots), avoid the walls and yourself. Fill the board to win. The moves are also in the menu. |
+| **Tetris** | 10 x 20 | Every move except hard drop also pulls the piece down one row. Dots show where the piece will land. The moves are also in the menu. |
+| **Minesweeper** | 16 x 8, 16 mines | Put the caret on any dotted cell and open the menu there: Reveal or Flag. The first reveal is always safe. Minesweeper has no keys line: revealed numbers are written into the board text, which only a code fix can change. |
 
 While playing, the header menu also offers **Pause** and **Restart**. When the game ends, it offers **Play again** and **Switch game**.
 
@@ -41,7 +48,8 @@ Because the Roslyn analyzer pipeline is a perfectly good rendering engine if you
 
 ### Limitations
 
-- **Turn-based only.** Analyzers can't run on a timer, so one action is one tick. Snake waits for you, which some people consider a feature.
+- **Turn-based only.** Analyzers can't run on a timer, so one key is one tick. Snake waits for you, which some people consider a feature. Holding a key comes close to real time.
+- **Arrow keys can't steer.** They only move the caret, and analyzers only see text changes, so steering is done by typing letters.
 - **Colours come from your theme**, not from Squiggly. See the palette below.
 - **Your Error List fills up with pixels.** That is the display.
 - **Error pixels fail `dotnet build`**, so a game in progress turns your build red. See [Build safety](#build-safety).
@@ -60,9 +68,9 @@ Each colour is a diagnostic severity, and each IDE draws severities its own way.
 
 ## How it works
 
-`Game.cs` starts with a one-line header such as `// squiggly v1 game=snake seed=8812 tick=37 status=playing score=4 dir=R head=10,5 tail=LL food=14,7`, followed by a canvas of `//|....|` comment lines. A `DiagnosticAnalyzer` parses the header, renders a frame, and reports one diagnostic per lit cell, each spanning two characters of the canvas. One more diagnostic sits on the header line, showing the score and anchoring the lightbulb menu. Each menu entry is a `CodeFixProvider` action that applies your move plus one tick and rewrites only the header line. The document changed, so Roslyn re-runs the analyzer, and the next frame appears.
+`Game.cs` starts with a one-line header such as `// squiggly v1 game=snake seed=8812 tick=37 status=playing score=4 dir=R head=10,5 tail=LL food=14,7`, followed by a canvas of `//|....|` comment lines and a `// keys:` line. A `DiagnosticAnalyzer` parses the header, replays the typed keys, renders a frame, and reports one diagnostic per lit cell, each spanning two characters of the canvas. Typing a key changes the document, so Roslyn re-runs the analyzer and the next frame appears. One more diagnostic sits on the header line, showing the score and anchoring the lightbulb menu, whose entries are `CodeFixProvider` actions that rewrite the header.
 
-The whole game is a pure function, `Render(Step(state, action))`. The same file always shows the same frame on any machine, because Squiggly uses its own PRNG (SplitMix64) seeded from the header, not `System.Random`.
+The whole game is a pure function, `Render(Replay(header, keys))`. The same file always shows the same frame on any machine, because Squiggly uses its own PRNG (SplitMix64) seeded from the header, not `System.Random`.
 
 ### The header
 
@@ -75,7 +83,7 @@ All state is plain text on one line, so a save game can be committed, diffed and
 | `piece rot pos next drawn lines board` | Tetris: current piece, rotation, position, next piece, pieces dealt, lines cleared, board rows as hex bitmasks |
 | `mines open flags` | Minesweeper: mine layout (`-` until the first reveal), revealed cells, flagged cells, as hex row bitmasks |
 
-A bare `// squiggly` means "no game yet". A header that fails to parse shows one warning (SQ9000) with a **Reset game** fix, and a damaged canvas shows one warning (SQ9001) with a **Repair canvas** fix.
+The `// keys:` line under the canvas holds moves typed since the header was last written. A bare `// squiggly` means "no game yet". A header that fails to parse shows one warning (SQ9000) with a **Reset game** fix, and a damaged canvas shows one warning (SQ9001) with a **Repair canvas** fix.
 
 ## Cheating
 

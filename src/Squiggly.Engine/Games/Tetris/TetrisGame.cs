@@ -63,6 +63,8 @@ public sealed class TetrisGame : IGame
 
     public bool DynamicCanvas => false;
 
+    public bool KeyControls => true;
+
     public IReadOnlyList<GameAction> Actions => ActionList;
 
     /// <summary>The <paramref name="index"/>th piece (0-based) of the seven-bag sequence for <paramref name="seed"/>.</summary>
@@ -121,6 +123,17 @@ public sealed class TetrisGame : IGame
 
     public IReadOnlyList<GameAction> CellActions(GameState state, Point cell) => System.Array.Empty<GameAction>();
 
+    /// <summary>a and d move, w rotates, s soft drops, x hard drops.</summary>
+    public GameAction? KeyAction(char key) => char.ToLowerInvariant(key) switch
+    {
+        'a' => Left,
+        'd' => Right,
+        'w' => Rotate,
+        's' => SoftDrop,
+        'x' => HardDrop,
+        _ => null,
+    };
+
     public Frame Render(GameState state)
     {
         var tetris = (TetrisState)state;
@@ -162,7 +175,7 @@ public sealed class TetrisGame : IGame
         var paused = tetris.Status == GameStatus.Paused ? " (paused)" : "";
         return string.Format(
             CultureInfo.InvariantCulture,
-            "Tetris{0}, score {1}, lines {2}, next {3}, tick {4}",
+            "Tetris{0}, score {1}, lines {2}, next {3}, tick {4}. On the // keys: line type a d to move, w to rotate, s to drop, x to hard drop",
             paused,
             tetris.Score,
             tetris.Lines,

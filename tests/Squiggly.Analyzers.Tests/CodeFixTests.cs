@@ -10,7 +10,7 @@ public class CodeFixTests
     private const string Footer = "namespace Arcade;\n";
 
     private static string SnakeFile(string header) =>
-        header + "\n" + string.Concat(Enumerable.Repeat("//|" + new string('.', 40) + "|\n", 10)) + Footer;
+        header + "\n" + string.Concat(Enumerable.Repeat("//|" + new string('.', 40) + "|\n", 10)) + "// keys:\n" + Footer;
 
     [Fact]
     public async Task Ready_menu_offers_every_game()
@@ -66,13 +66,24 @@ public class CodeFixTests
 
         Assert.DoesNotContain("\n", text.Replace("\r\n", ""));
         var lines = text.Split("\r\n");
-        Assert.Equal(TetrisGame.Instance.Height + 3, lines.Length);
+        Assert.Equal(TetrisGame.Instance.Height + 4, lines.Length);
+        Assert.Equal("  // keys:", lines[TetrisGame.Instance.Height + 1]);
         Assert.All(lines.Skip(1).Take(TetrisGame.Instance.Height), line => Assert.Equal("  //|" + new string('.', 20) + "|", line));
 
         var moved = await harness.ChooseAsync(started, Descriptors.Hud.Id, "Squiggly: Hard drop");
         var movedLines = (await FixHarness.TextAsync(moved)).Split("\r\n");
         Assert.StartsWith("  // squiggly v1 game=tetris", movedLines[0]);
         Assert.Equal(lines.Skip(1), movedLines.Skip(1));
+    }
+
+    [Fact]
+    public async Task Save_progress_folds_typed_keys_into_the_header()
+    {
+        var state = SnakeGame.Instance.NewGame(7);
+        var source = SnakeFile(Header.Serialize(SnakeGame.Instance, state)).Replace("// keys:", "// keys: dddw");
+        var saved = await new FixHarness().ChooseAsync(FixHarness.Document(source), Descriptors.Hud.Id, "Squiggly: Save progress (move typed keys into the header)");
+        var expected = GameFile.Replay(SnakeGame.Instance, state, "dddw");
+        Assert.Equal(SnakeFile(Header.Serialize(SnakeGame.Instance, expected)), await FixHarness.TextAsync(saved));
     }
 
     [Fact]

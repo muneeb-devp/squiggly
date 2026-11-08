@@ -63,7 +63,15 @@ public sealed class MinesGame : IGame
 
     public bool DynamicCanvas => true;
 
+    /// <summary>
+    /// False: revealed numbers live in the canvas text, which only a code fix can rewrite, so typed keys
+    /// could never show them. Minesweeper is played with the lightbulb on each cell instead.
+    /// </summary>
+    public bool KeyControls => false;
+
     public IReadOnlyList<GameAction> Actions => System.Array.Empty<GameAction>();
+
+    public GameAction? KeyAction(char key) => null;
 
     public static GameAction Reveal(Point cell) => new("reveal", "Reveal", cell);
 

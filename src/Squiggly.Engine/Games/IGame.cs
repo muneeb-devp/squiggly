@@ -51,6 +51,12 @@ public interface IGame
     /// <summary>True when actions also rewrite canvas characters (Minesweeper's revealed numbers).</summary>
     bool DynamicCanvas { get; }
 
+    /// <summary>
+    /// True when the game is steered by typing on a <c>// keys:</c> line under the canvas. Each typed key
+    /// is one action, replayed on top of the header state, so no lightbulb is needed between moves.
+    /// </summary>
+    bool KeyControls { get; }
+
     /// <summary>Actions offered on the header line while playing, in menu order.</summary>
     IReadOnlyList<GameAction> Actions { get; }
 
@@ -61,6 +67,9 @@ public interface IGame
 
     /// <summary>Actions offered on a single cell, in menu order. Empty for games without cell input.</summary>
     IReadOnlyList<GameAction> CellActions(GameState state, Point cell);
+
+    /// <summary>The action a typed key stands for (case-insensitive), or null when the key means nothing.</summary>
+    GameAction? KeyAction(char key);
 
     Frame Render(GameState state);
 

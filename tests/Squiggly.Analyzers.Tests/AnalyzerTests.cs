@@ -70,8 +70,37 @@ public class AnalyzerTests
             //|............................{|SQ0003:..|}..........|
             //|........................................|
             //|........................................|
+            // keys:
             namespace Arcade;
             """);
+    }
+
+    [Fact]
+    public async Task Typing_keys_moves_the_snake_without_a_code_fix()
+    {
+        // Two moves right then one up: the head goes from 10,5 to 12,4 and the food stays put.
+        await Verify("""
+            {|SQ0010:// squiggly v1 game=snake seed=8812 tick=37 status=playing score=4 dir=R head=10,5 tail=LL food=14,7|}
+            //|........................................|
+            //|........................................|
+            //|........................................|
+            //|........................................|
+            //|........................{|SQ0001:..|}..............|
+            //|......................{|SQ0002:..|}{|SQ0002:..|}..............|
+            //|........................................|
+            //|............................{|SQ0003:..|}..........|
+            //|........................................|
+            //|........................................|
+            // keys: ddw
+            namespace Arcade;
+            """);
+    }
+
+    [Fact]
+    public async Task Missing_keys_line_reports_SQ9001()
+    {
+        var header = "// squiggly v1 game=snake seed=1 tick=0 status=playing score=0 dir=R head=10,5 tail=LL food=1,1";
+        await Verify(Board(header, 10, 20, keys: false), Expect(Descriptors.CanvasError).WithSpan(1, 1, 1, header.Length + 1));
     }
 
     [Fact]
@@ -80,7 +109,7 @@ public class AnalyzerTests
         var header = "// squiggly v1 game=snake seed=8812 tick=37 status=playing score=4 dir=R head=10,5 tail=LL food=14,7";
         await Verify(
             Board(header, 10, 20),
-            new DiagnosticResult(Descriptors.Hud).WithSpan(1, 1, 1, header.Length + 1).WithArguments("Snake, score 4, length 3, tick 37"),
+            new DiagnosticResult(Descriptors.Hud).WithSpan(1, 1, 1, header.Length + 1).WithArguments("Snake, score 4, length 3, tick 37. Type w a s d at the end of the // keys: line to steer"),
             Pixel(Descriptors.Secondary, 8, 5),
             Pixel(Descriptors.Secondary, 9, 5),
             Pixel(Descriptors.Primary, 10, 5),
@@ -131,7 +160,7 @@ public class AnalyzerTests
         var game = Games.Find(id)!;
         var state = game.NewGame(31337);
         var header = Header.Serialize(game, state);
-        var source = Board(indent + header, game.Height, game.Width, newline, indent);
+        var source = Board(indent + header, game.Height, game.Width, newline, indent, game.KeyControls);
 
         var expected = new List<DiagnosticResult>
         {
@@ -156,16 +185,21 @@ public class AnalyzerTests
             }
         }
 
-        await Verify(Board(header, game.Height, game.Width), expected.ToArray());
+        await Verify(Board(header, game.Height, game.Width, keys: false), expected.ToArray());
     }
 
     /// <summary>Matches ID, severity and span; messages are checked only where a test asks for them.</summary>
     private static DiagnosticResult Expect(DiagnosticDescriptor descriptor) => new(descriptor.Id, descriptor.DefaultSeverity);
 
-    private static string Board(string header, int rows, int width, string newline = "\n", string indent = "")
+    private static string Board(string header, int rows, int width, string newline = "\n", string indent = "", bool keys = true)
     {
         var lines = new List<string> { header };
         lines.AddRange(Enumerable.Repeat(indent + "//|" + new string('.', width * 2) + "|", rows));
+        if (keys)
+        {
+            lines.Add(indent + "// keys:");
+        }
+
         lines.Add("namespace Arcade;");
         return string.Join(newline, lines) + newline;
     }

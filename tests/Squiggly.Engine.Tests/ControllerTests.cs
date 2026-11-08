@@ -136,6 +136,33 @@ public class ControllerTests
     }
 
     [Fact]
+    public void Typed_keys_add_save_progress_which_folds_them_into_the_header()
+    {
+        var game = SnakeGame.Instance;
+        var state = game.NewGame(77);
+        var lines = Canvas.Lines(game, state, "").Take(10).Append("// keys: ddw").ToArray();
+        var file = File(Header.Serialize(game, state), lines);
+        var menu = Controller.Menu(file);
+        Assert.Equal("Squiggly: Save progress (move typed keys into the header)", menu.Last().Title);
+
+        var edit = Controller.Apply(file, menu.Last(), 1);
+        var expected = GameFile.Replay(game, state, "ddw");
+        Assert.Equal(new FileEdit(Header.Serialize(game, expected), null, ""), edit);
+    }
+
+    [Fact]
+    public void Menu_moves_act_on_the_state_after_typed_keys()
+    {
+        var game = SnakeGame.Instance;
+        var state = game.NewGame(77);
+        var lines = Canvas.Lines(game, state, "").Take(10).Append("// keys: dd").ToArray();
+        var file = File(Header.Serialize(game, state), lines);
+        var edit = Controller.Apply(file, Controller.Menu(file)[0], 1);
+        Assert.Equal(Header.Serialize(game, game.Step(GameFile.Replay(game, state, "dd"), SnakeGame.Up)), edit.Header);
+        Assert.Equal("", edit.Keys);
+    }
+
+    [Fact]
     public void Snake_cells_offer_nothing()
     {
         Assert.Empty(Controller.CellMenu(Playing(SnakeGame.Instance), new Point(10, 5)));

@@ -17,6 +17,21 @@ public static class Canvas
     /// </summary>
     public const char Fill = '.';
 
+    /// <summary>The line under the canvas that holds typed keys, for games with <see cref="IGame.KeyControls"/>.</summary>
+    public const string KeysPrefix = "// keys:";
+
+    public static bool IsKeysLine(string line) => line.TrimStart().StartsWith(KeysPrefix, System.StringComparison.Ordinal);
+
+    /// <summary>The typed keys on a keys line: everything after the prefix, without surrounding whitespace.</summary>
+    public static string ReadKeys(string line)
+    {
+        var trimmed = line.Trim();
+        return trimmed.Substring(System.Math.Min(KeysPrefix.Length, trimmed.Length)).Trim();
+    }
+
+    /// <summary>A keys line with the given indent; empty keys give a bare prefix with no trailing space.</summary>
+    public static string KeysLine(string indent, string keys) => indent + KeysPrefix + (keys.Length == 0 ? "" : " " + keys);
+
     /// <summary>Character offset of cell <paramref name="x"/> within a canvas row with the given indent.</summary>
     public static int CellColumn(int indent, int x) => indent + RowPrefix.Length + x * 2;
 
@@ -34,14 +49,18 @@ public static class Canvas
             && trimmed[trimmed.Length - 1] == RowSuffix;
     }
 
-    /// <summary>The full canvas lines for a game state.</summary>
+    /// <summary>The full block under the header for a game state: canvas rows, then an empty keys line if the game uses one.</summary>
     public static IReadOnlyList<string> Lines(IGame game, GameState state, string indent)
     {
-        var contents = game.Canvas(state);
-        var lines = new string[contents.Count];
-        for (var i = 0; i < lines.Length; i++)
+        var lines = new List<string>();
+        foreach (var contents in game.Canvas(state))
         {
-            lines[i] = Row(indent, contents[i]);
+            lines.Add(Row(indent, contents));
+        }
+
+        if (game.KeyControls)
+        {
+            lines.Add(KeysLine(indent, ""));
         }
 
         return lines;

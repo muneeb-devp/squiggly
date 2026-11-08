@@ -66,6 +66,8 @@ public sealed class SnakeGame : IGame
 
     public bool DynamicCanvas => false;
 
+    public bool KeyControls => true;
+
     public IReadOnlyList<GameAction> Actions => ActionList;
 
     public GameState NewGame(uint seed)
@@ -139,6 +141,16 @@ public sealed class SnakeGame : IGame
 
     public IReadOnlyList<GameAction> CellActions(GameState state, Point cell) => System.Array.Empty<GameAction>();
 
+    /// <summary>w a s d steer. Pressing the current direction again just moves forward, so holding a key glides.</summary>
+    public GameAction? KeyAction(char key) => char.ToLowerInvariant(key) switch
+    {
+        'w' => Up,
+        'a' => Left,
+        's' => Down,
+        'd' => Right,
+        _ => null,
+    };
+
     public Frame Render(GameState state)
     {
         var snake = (SnakeState)state;
@@ -164,7 +176,7 @@ public sealed class SnakeGame : IGame
         var paused = snake.Status == GameStatus.Paused ? " (paused)" : "";
         return string.Format(
             CultureInfo.InvariantCulture,
-            "Snake{0}, score {1}, length {2}, tick {3}",
+            "Snake{0}, score {1}, length {2}, tick {3}. Type w a s d at the end of the // keys: line to steer",
             paused,
             snake.Score,
             snake.Tail.Length + 1,
