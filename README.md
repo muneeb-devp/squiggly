@@ -2,7 +2,7 @@
 
 Squiggly is a NuGet package that turns your IDE into a game console. Compiler diagnostics are the pixels, the keys you type are the controls, and the whole game lives in comments in the file. Install it, create `Game.cs`, press <kbd>Ctrl</kbd>+<kbd>.</kbd>, and play Snake in red and yellow squiggles.
 
-![Snake in Squiggly: start a game from the lightbulb menu, then steer by typing w a s d on the keys line. The red squiggle is the head, yellow is the body, dots are the food.](assets/snake.gif)
+![Snake in Squiggly: start a game from the lightbulb menu, then steer by typing w a s d on the keys line. The red squiggle is the head, yellow is the body, dots are the food.](https://raw.githubusercontent.com/muneeb-devp/squiggly/main/assets/snake.gif)
 
 <sub>Snake: start a game from the lightbulb, then steer by typing on the <code>// keys:</code> line. Red is the snake's head, yellow its body, and the dots are food.</sub>
 
@@ -25,7 +25,7 @@ Open `Game.cs` in your IDE, put the caret on the first line, and press <kbd>Ctrl
 | Snake | <kbd>w</kbd> up, <kbd>a</kbd> left, <kbd>s</kbd> down, <kbd>d</kbd> right. Pressing the way you're already going moves one step forward. |
 | Tetris | <kbd>a</kbd> / <kbd>d</kbd> move, <kbd>w</kbd> rotate, <kbd>s</kbd> soft drop, <kbd>x</kbd> hard drop |
 
-![Tetris in Squiggly: pieces are moved and dropped by typing a d w s x on the keys line. The red squiggle is the falling piece, yellow squiggles are locked blocks, and dots show where the piece will land.](assets/tetris.gif)
+![Tetris in Squiggly: pieces are moved and dropped by typing a d w s x on the keys line. The red squiggle is the falling piece, yellow squiggles are locked blocks, and dots show where the piece will land.](https://raw.githubusercontent.com/muneeb-devp/squiggly/main/assets/tetris.gif)
 
 <sub>Tetris: the falling piece is red, locked blocks are yellow, and the dots show where the piece will land. Both animations are drawn from the real analyzer output by <a href="eng/demo">eng/demo</a>, in VS Code's dark-theme colours.</sub>
 
@@ -143,4 +143,4 @@ eng/pack-local.sh ~/ArcadeTest     # pack to a local feed and set up a project t
 
 ## Licence
 
-[MIT](LICENSE) © 2026 Muneeb Mughal
+[MIT](https://github.com/muneeb-devp/squiggly/blob/main/LICENSE) © 2026 Muneeb Mughal
