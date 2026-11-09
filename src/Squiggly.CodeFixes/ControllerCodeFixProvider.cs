@@ -14,7 +14,7 @@ namespace Squiggly.CodeFixes;
 
 /// <summary>
 /// The game controls. On the header line it offers the menu for the current status (new game, moves,
-/// pause, restart, repair, reset); on a Minesweeper cell it offers that cell's actions. Each entry is
+/// restart, play again, switch game, repair, reset); on a Minesweeper cell it offers that cell's actions. Each entry is
 /// computed up front, with the new-game seed drawn once per request, so the IDE's preview and the
 /// applied change are always identical.
 /// </summary>

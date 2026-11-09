@@ -73,6 +73,8 @@ Each colour is a diagnostic severity, and each IDE draws severities its own way.
 
 ## How it works
 
+New to analyzers? [How Squiggly works](https://github.com/muneeb-devp/squiggly/blob/main/docs/HOW-IT-WORKS.md) explains diagnostics, analyzers and code fixes from scratch, then follows one keystroke through the whole system. The short version:
+
 A game file has three parts:
 
 ```
